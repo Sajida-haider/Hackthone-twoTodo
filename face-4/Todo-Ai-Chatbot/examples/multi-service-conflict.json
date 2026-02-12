@@ -1,0 +1,298 @@
+{
+  "multi_service_evaluation_id": "mse-20260210-190000-002",
+  "timestamp": "2026-02-10T19:00:00Z",
+  "agent_id": "multi-service-coordinator-001",
+  "evaluation_type": "conflict_detection_and_resolution",
+
+  "services_evaluated": ["todo-frontend", "todo-backend"],
+
+  "frontend_evaluation": {
+    "service": "todo-frontend",
+    "blueprint_version": "1.0.0",
+    "evaluation_timestamp": "2026-02-10T19:00:00Z",
+
+    "current_state": {
+      "replicas": 3,
+      "pods_running": 3,
+      "pods_ready": 3,
+      "metrics": {
+        "cpu_utilization": 0.88,
+        "memory_utilization": 0.82,
+        "latency_p50": 180,
+        "latency_p95": 250,
+        "throughput": 220,
+        "error_rate": 0.008
+      }
+    },
+
+    "blueprint_targets": {
+      "cpu_target_utilization": 0.70,
+      "memory_target_utilization": 0.80,
+      "latency_p95_target": 200,
+      "scale_up_threshold": 0.80,
+      "min_replicas": 1,
+      "max_replicas": 5
+    },
+
+    "decision": {
+      "decision_id": "dec-20260210-190000-003",
+      "decision_type": "scaling",
+      "action": "scale_up",
+      "current_replicas": 3,
+      "target_replicas": 4,
+      "rationale": "Weighted utilization (86.6%) exceeds scale_up_threshold (80%). Latency (250ms) exceeds target (200ms). Scaling to 4 replicas to reduce load.",
+      "weighted_utilization": 0.866,
+      "resources_needed": {
+        "cpu": "50m",
+        "memory": "128Mi"
+      }
+    },
+
+    "governance_check": {
+      "classification": "allowed",
+      "requires_approval": false,
+      "rationale": "Target replicas (4) within blueprint limits (1-5)"
+    },
+
+    "priority": {
+      "level": "medium",
+      "criticality": "standard",
+      "score": 50
+    }
+  },
+
+  "backend_evaluation": {
+    "service": "todo-backend",
+    "blueprint_version": "1.0.0",
+    "evaluation_timestamp": "2026-02-10T19:00:00Z",
+
+    "current_state": {
+      "replicas": 3,
+      "pods_running": 3,
+      "pods_ready": 3,
+      "metrics": {
+        "cpu_utilization": 0.85,
+        "memory_utilization": 0.78,
+        "latency_p50": 110,
+        "latency_p95": 145,
+        "throughput": 280,
+        "error_rate": 0.003
+      }
+    },
+
+    "blueprint_targets": {
+      "cpu_target_utilization": 0.70,
+      "memory_target_utilization": 0.80,
+      "latency_p95_target": 150,
+      "scale_up_threshold": 0.75,
+      "min_replicas": 2,
+      "max_replicas": 5
+    },
+
+    "decision": {
+      "decision_id": "dec-20260210-190000-004",
+      "decision_type": "scaling",
+      "action": "scale_up",
+      "current_replicas": 3,
+      "target_replicas": 4,
+      "rationale": "Weighted utilization (82.9%) exceeds scale_up_threshold (75%). Approaching latency target (145ms vs 150ms). Scaling to 4 replicas to maintain performance.",
+      "weighted_utilization": 0.829,
+      "resources_needed": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      }
+    },
+
+    "governance_check": {
+      "classification": "allowed",
+      "requires_approval": false,
+      "rationale": "Target replicas (4) within blueprint limits (2-5)"
+    },
+
+    "priority": {
+      "level": "high",
+      "criticality": "critical",
+      "score": 90
+    }
+  },
+
+  "conflict_detection": {
+    "conflicts_detected": true,
+    "conflict_type": "resource_conflict",
+    "conflict_severity": "high",
+
+    "resource_analysis": {
+      "cluster_capacity": {
+        "cpu_available": "120m",
+        "memory_available": "300Mi",
+        "nodes_available": 3,
+        "node_pressure": false
+      },
+
+      "total_resources_requested": {
+        "frontend_cpu": "50m",
+        "frontend_memory": "128Mi",
+        "backend_cpu": "100m",
+        "backend_memory": "256Mi",
+        "total_cpu": "150m",
+        "total_memory": "384Mi"
+      },
+
+      "capacity_check": {
+        "cpu_sufficient": false,
+        "cpu_shortfall": "30m",
+        "cpu_utilization_if_both_scale": "125%",
+        "memory_sufficient": false,
+        "memory_shortfall": "84Mi",
+        "memory_utilization_if_both_scale": "128%"
+      }
+    },
+
+    "conflict_details": {
+      "conflict_id": "conf-20260210-190000-001",
+      "description": "Both frontend and backend need scaling, but cluster has insufficient CPU (120m available vs 150m needed) and memory (300Mi available vs 384Mi needed)",
+      "impact": "Cannot execute both operations simultaneously",
+      "resolution_required": true
+    }
+  },
+
+  "conflict_resolution": {
+    "strategy": "prioritize_by_criticality",
+    "resolution_id": "res-20260210-190000-001",
+
+    "priority_evaluation": {
+      "backend": {
+        "priority_level": "high",
+        "criticality": "critical",
+        "priority_score": 90,
+        "current_state_severity": "high",
+        "weighted_utilization": 0.829,
+        "latency_approaching_limit": true,
+        "error_rate": 0.003,
+        "justification": "Backend is critical service with high priority. Utilization 82.9% and approaching latency limit. Failure would impact all users."
+      },
+      "frontend": {
+        "priority_level": "medium",
+        "criticality": "standard",
+        "priority_score": 50,
+        "current_state_severity": "medium",
+        "weighted_utilization": 0.866,
+        "latency_exceeds_limit": true,
+        "error_rate": 0.008,
+        "justification": "Frontend is standard service with medium priority. While utilization is higher (86.6%), impact is less critical than backend."
+      }
+    },
+
+    "resolution_decision": {
+      "backend": {
+        "action": "execute",
+        "decision_id": "dec-20260210-190000-004",
+        "operation": "scale_up",
+        "target_replicas": 4,
+        "execution_order": 1,
+        "rationale": "Backend prioritized due to critical service classification and high priority score (90 vs 50). Backend failure would impact entire application."
+      },
+      "frontend": {
+        "action": "defer",
+        "decision_id": "dec-20260210-190000-003",
+        "operation": "scale_up_deferred",
+        "target_replicas": 4,
+        "defer_duration": "5 minutes",
+        "retry_at": "2026-02-10T19:05:00Z",
+        "rationale": "Frontend deferred until resources available. Will retry after backend scaling completes and cluster capacity increases."
+      }
+    },
+
+    "alternative_considered": {
+      "option": "scale_both_partially",
+      "description": "Scale backend to 4 replicas, scale frontend to 3.5 (not possible - must be integer)",
+      "rejected_reason": "Cannot partially scale. Must choose one service to prioritize."
+    }
+  },
+
+  "execution_plan": {
+    "immediate_execution": {
+      "service": "todo-backend",
+      "operation": "scale_up",
+      "command": "kubectl scale deployment todo-backend --replicas=4 -n todo-app",
+      "execution_order": 1,
+      "estimated_duration": "60s",
+      "resources_allocated": {
+        "cpu": "100m",
+        "memory": "256Mi"
+      }
+    },
+
+    "deferred_execution": {
+      "service": "todo-frontend",
+      "operation": "scale_up",
+      "scheduled_at": "2026-02-10T19:05:00Z",
+      "condition": "cluster_capacity_available",
+      "resources_needed": {
+        "cpu": "50m",
+        "memory": "128Mi"
+      },
+      "fallback": "If capacity still insufficient, alert DevOps team for cluster expansion"
+    }
+  },
+
+  "expected_outcomes": {
+    "backend": {
+      "replicas_after": 4,
+      "expected_cpu_utilization": 0.64,
+      "expected_memory_utilization": 0.59,
+      "expected_latency_p95": 120,
+      "improvement": "Reduced utilization, improved latency margin"
+    },
+    "frontend": {
+      "replicas_after": 3,
+      "current_cpu_utilization": 0.88,
+      "current_memory_utilization": 0.82,
+      "current_latency_p95": 250,
+      "status": "Deferred - will scale after backend completes and resources available"
+    },
+    "cluster": {
+      "cpu_available_after_backend_scale": "20m",
+      "memory_available_after_backend_scale": "44Mi",
+      "sufficient_for_frontend": false,
+      "action_required": "Monitor for capacity increase or consider cluster expansion"
+    }
+  },
+
+  "notification": {
+    "devops_team_notified": true,
+    "notification_sent_at": "2026-02-10T19:00:05Z",
+    "notification_channels": ["slack://devops-alerts", "email://devops@example.com"],
+    "message": "Resource conflict detected: Backend scaling prioritized (critical service), frontend deferred. Cluster capacity: CPU 120m, Memory 300Mi. Consider cluster expansion if frontend scaling continues to be deferred.",
+    "severity": "warning"
+  },
+
+  "monitoring": {
+    "backend_verification_scheduled": "2026-02-10T19:01:30Z",
+    "frontend_retry_scheduled": "2026-02-10T19:05:00Z",
+    "cluster_capacity_monitoring": "continuous",
+    "alert_if_frontend_deferred_count": 3
+  },
+
+  "audit_trail": {
+    "conflict_detected_at": "2026-02-10T19:00:00Z",
+    "resolution_decided_at": "2026-02-10T19:00:02Z",
+    "backend_execution_started": "2026-02-10T19:00:05Z",
+    "frontend_deferred_until": "2026-02-10T19:05:00Z",
+    "devops_notified": true,
+    "total_resolution_time": "2 seconds"
+  },
+
+  "lessons_learned": {
+    "conflict_cause": "Both services experiencing high load simultaneously, cluster capacity insufficient",
+    "resolution_effectiveness": "Priority-based resolution ensured critical service (backend) maintained performance",
+    "improvement_opportunity": "Consider cluster auto-scaling or capacity planning to handle simultaneous service scaling needs",
+    "recommendation": "Review cluster capacity and consider adding nodes or implementing cluster auto-scaler"
+  },
+
+  "key_takeaways": {
+    "for_operators": "Resource conflicts resolved by service priority. Backend (critical) prioritized over frontend (standard). Frontend will retry when capacity available.",
+    "for_agents": "Conflict detection working correctly. Priority-based resolution ensures critical services maintain performance during resource constraints.",
+    "for_capacity_planning": "Cluster capacity (120m CPU, 300Mi memory) insufficient for simultaneous scaling. Consider cluster expansion or auto-scaling."
+  }
+}

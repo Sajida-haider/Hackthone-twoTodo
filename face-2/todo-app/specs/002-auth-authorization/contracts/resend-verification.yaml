@@ -1,0 +1,129 @@
+openapi: 3.0.3
+info:
+  title: Resend Verification Email API
+  description: Endpoint for requesting a new verification email
+  version: 1.0.0
+
+paths:
+  /api/auth/resend-verification:
+    post:
+      summary: Resend verification email
+      description: |
+        Sends a new verification email to the user if their email is not yet verified.
+        Generates a new token that expires in 24 hours. Previous tokens remain valid until expiration.
+        Rate limited to prevent abuse (max 3 requests per hour per email).
+      operationId: resendVerification
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                  description: User's email address
+                  example: user@example.com
+      responses:
+        '200':
+          description: Verification email sent successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Verification email sent. Please check your inbox.
+        '400':
+          description: Invalid request or email already verified
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              examples:
+                invalidEmail:
+                  value:
+                    detail: Invalid email format
+                alreadyVerified:
+                  value:
+                    detail: Email already verified
+                missingEmail:
+                  value:
+                    detail: Email is required
+        '404':
+          description: Email not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Email not found
+        '429':
+          description: Too many requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                  retry_after:
+                    type: integer
+                    description: Seconds until next request allowed
+              example:
+                detail: Too many verification email requests. Please try again later.
+                retry_after: 3600
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Failed to send verification email
+
+components:
+  schemas:
+    ResendVerificationRequest:
+      type: object
+      required:
+        - email
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+
+    ResendVerificationResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+
+    RateLimitResponse:
+      type: object
+      properties:
+        detail:
+          type: string
+        retry_after:
+          type: integer

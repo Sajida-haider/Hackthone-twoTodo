@@ -1,0 +1,241 @@
+{
+  "governance_check_id": "gov-20260210-163000-001",
+  "timestamp": "2026-02-10T16:30:00Z",
+  "agent_id": "governance-enforcer-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+  "check_type": "pre_execution",
+
+  "operation": {
+    "operation_id": "dec-20260210-153045-001",
+    "type": "scale_up",
+    "source": "decision-engine-001",
+    "details": {
+      "current_replicas": 2,
+      "target_replicas": 3,
+      "reason": "high_utilization",
+      "weighted_utilization": 0.815,
+      "scale_up_threshold": 0.80
+    },
+    "rationale": "Weighted utilization (81.5%) exceeds scale_up_threshold (80%). Scaling to 3 replicas to reduce load and maintain performance targets."
+  },
+
+  "governance_classification": {
+    "classification": "allowed",
+    "tier": 1,
+    "action": "execute",
+    "requires_approval": false,
+    "can_execute_autonomously": true
+  },
+
+  "classification_logic": {
+    "step_1_check_forbidden": {
+      "is_forbidden": false,
+      "rationale": "Operation type 'scale_up' is not in forbidden_operations list",
+      "forbidden_operations_checked": [
+        "delete_deployment",
+        "delete_service",
+        "delete_persistent_volumes",
+        "modify_secrets",
+        "change_network_policies",
+        "modify_rbac"
+      ]
+    },
+
+    "step_2_check_restricted": {
+      "is_restricted": false,
+      "rationale": "Target replicas (3) is within blueprint limits (min: 1, max: 5)",
+      "limits_check": {
+        "min_replicas": 1,
+        "max_replicas": 5,
+        "target_replicas": 3,
+        "within_limits": true,
+        "calculation": "1 <= 3 <= 5 → True"
+      },
+      "restricted_operations_checked": [
+        "scale_beyond_limits",
+        "change_resource_limits_beyond_10_percent",
+        "modify_deployment_strategy",
+        "change_health_checks"
+      ]
+    },
+
+    "step_3_check_allowed": {
+      "is_allowed": true,
+      "rationale": "Operation matches 'scale_within_limits' in allowed_operations list",
+      "matching_rule": "scale_within_limits",
+      "rule_definition": "Scale between min_replicas and max_replicas defined in blueprint",
+      "rule_satisfied": true,
+      "allowed_operations_list": [
+        "scale_within_limits",
+        "restart_failed_pods",
+        "adjust_resources_within_10_percent",
+        "view_logs",
+        "view_metrics",
+        "view_events"
+      ]
+    }
+  },
+
+  "blueprint_references": {
+    "governance_rules": [
+      "governance.agent_authority.allowed_operations[0]"
+    ],
+    "scaling_limits": [
+      "spec.scaling.min_replicas",
+      "spec.scaling.max_replicas"
+    ],
+    "decision_criteria": [
+      "spec.scaling.scale_up_threshold"
+    ]
+  },
+
+  "safety_checks": {
+    "circuit_breaker": {
+      "state": "closed",
+      "consecutive_failures": 0,
+      "failure_threshold": 3,
+      "can_execute": true
+    },
+    "rate_limiting": {
+      "operations_last_hour": 2,
+      "max_per_hour": 10,
+      "operations_last_day": 8,
+      "max_per_day": 50,
+      "within_limits": true
+    },
+    "cooldown_period": {
+      "last_operation": "2026-02-10T15:25:00Z",
+      "seconds_elapsed": 345,
+      "cooldown_required": 60,
+      "cooldown_elapsed": true
+    }
+  },
+
+  "risk_assessment": {
+    "risk_level": "low",
+    "impact": "minimal",
+    "reversibility": "high",
+    "rationale": "Scaling from 2 to 3 replicas is a conservative increment within blueprint limits. Operation is easily reversible.",
+    "blast_radius": "single_service",
+    "rollback_complexity": "simple"
+  },
+
+  "authorization": {
+    "authorized": true,
+    "authorization_type": "autonomous",
+    "authorization_source": "blueprint_governance_rules",
+    "authorized_at": "2026-02-10T16:30:00Z",
+    "authorized_by": "governance-enforcer-001",
+    "approval_required": false
+  },
+
+  "execution_clearance": {
+    "cleared_for_execution": true,
+    "clearance_rationale": "Operation is classified as 'allowed', passes all safety checks, and is within blueprint limits. Autonomous execution authorized.",
+    "next_step": "pass_to_execution_engine",
+    "execution_command": "kubectl scale deployment todo-frontend --replicas=3 -n todo-app"
+  },
+
+  "audit_trail": {
+    "governance_check_performed": true,
+    "classification_logged": true,
+    "decision_logged": true,
+    "blueprint_version_recorded": true,
+    "all_checks_passed": true
+  },
+
+  "notification": {
+    "required": false,
+    "rationale": "Allowed operations do not require notification unless they fail",
+    "notification_on_failure": true,
+    "notification_channels": ["slack://devops-alerts"]
+  },
+
+  "execution_plan": {
+    "immediate_action": "execute_operation",
+    "execution_agent": "execution-engine-001",
+    "verification_agent": "verification-engine-001",
+    "verification_timeout": "60s",
+    "rollback_on_failure": true
+  },
+
+  "comparison_with_other_tiers": {
+    "why_not_restricted": {
+      "reason": "Target replicas (3) is within blueprint limits",
+      "would_be_restricted_if": "Target replicas > max_replicas (5) or < min_replicas (1)",
+      "example_restricted": "Scaling to 6 replicas would require approval"
+    },
+    "why_not_forbidden": {
+      "reason": "Scaling is a safe, reversible operation",
+      "would_be_forbidden_if": "Operation was 'delete_deployment' or 'modify_secrets'",
+      "example_forbidden": "Deleting the deployment would be blocked"
+    }
+  },
+
+  "governance_policy_excerpt": {
+    "from_blueprint": "blueprints/frontend/blueprint.yaml",
+    "section": "governance.agent_authority.allowed_operations",
+    "rule": "scale_within_limits",
+    "definition": "Agents can autonomously scale deployments between min_replicas and max_replicas defined in spec.scaling",
+    "rationale": "Scaling within defined limits is safe, reversible, and aligns with blueprint targets. No human approval needed."
+  },
+
+  "historical_context": {
+    "similar_operations_last_7d": 12,
+    "success_rate": "100%",
+    "average_execution_time": "2.3s",
+    "rollback_count": 0,
+    "confidence": "high"
+  },
+
+  "decision_summary": {
+    "operation": "Scale todo-frontend from 2 to 3 replicas",
+    "classification": "Allowed (Tier 1)",
+    "authorization": "Autonomous execution authorized",
+    "rationale": "Operation is within blueprint limits, passes all safety checks, and matches 'scale_within_limits' rule in allowed_operations list",
+    "next_step": "Execute via Execution Engine",
+    "approval_required": false,
+    "estimated_execution_time": "2-3 seconds"
+  },
+
+  "alternative_scenarios": {
+    "if_target_was_6_replicas": {
+      "target_replicas": 6,
+      "max_replicas": 5,
+      "within_limits": false,
+      "classification": "restricted",
+      "action": "request_approval",
+      "rationale": "Target (6) exceeds max_replicas (5) - requires approval to increase max_replicas"
+    },
+    "if_target_was_0_replicas": {
+      "target_replicas": 0,
+      "min_replicas": 1,
+      "within_limits": false,
+      "classification": "restricted",
+      "action": "request_approval",
+      "rationale": "Target (0) below min_replicas (1) - requires approval to scale to zero"
+    },
+    "if_cooldown_not_elapsed": {
+      "seconds_elapsed": 30,
+      "cooldown_required": 60,
+      "cooldown_elapsed": false,
+      "classification": "allowed_but_blocked",
+      "action": "defer",
+      "rationale": "Operation is allowed but cooldown period not elapsed - defer execution"
+    },
+    "if_circuit_breaker_open": {
+      "circuit_breaker_state": "open",
+      "consecutive_failures": 3,
+      "classification": "allowed_but_blocked",
+      "action": "block",
+      "rationale": "Operation is allowed but circuit breaker is open - block until manual reset"
+    }
+  },
+
+  "key_takeaways": {
+    "for_developers": "Allowed operations execute autonomously without approval. Ensure your blueprints define appropriate limits.",
+    "for_operators": "Monitor audit logs to see which operations are executing autonomously. Adjust governance rules if needed.",
+    "for_security": "Allowed operations are safe by design. Review allowed_operations list periodically to ensure it matches risk tolerance."
+  }
+}

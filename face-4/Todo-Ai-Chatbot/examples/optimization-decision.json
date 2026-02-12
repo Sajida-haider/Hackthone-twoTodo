@@ -1,0 +1,302 @@
+{
+  "decision_id": "dec-20260210-154230-002",
+  "timestamp": "2026-02-10T15:42:30Z",
+  "agent_id": "decision-engine-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+  "decision_type": "resource_optimization",
+
+  "current_state": {
+    "replicas": 2,
+    "resources": {
+      "cpu": {
+        "request": "100m",
+        "request_millicores": 100,
+        "limit": "200m",
+        "limit_millicores": 200,
+        "usage": "30m",
+        "usage_millicores": 30,
+        "utilization": 0.30
+      },
+      "memory": {
+        "request": "128Mi",
+        "request_bytes": 134217728,
+        "limit": "512Mi",
+        "limit_bytes": 536870912,
+        "usage": "100Mi",
+        "usage_bytes": 104857600,
+        "utilization": 0.78
+      }
+    },
+    "observation_period": "7d",
+    "observation_note": "Metrics averaged over 7 days to avoid optimizing based on transient spikes"
+  },
+
+  "blueprint_targets": {
+    "cpu": {
+      "target_utilization": 0.70,
+      "optimization_threshold": 0.10
+    },
+    "memory": {
+      "target_utilization": 0.80,
+      "optimization_threshold": 0.10
+    }
+  },
+
+  "decision_logic": {
+    "cpu_analysis": {
+      "step_1_current_utilization": {
+        "request": "100m",
+        "usage": "30m",
+        "utilization": 0.30,
+        "calculation": "30m / 100m = 0.30 (30%)"
+      },
+      "step_2_target_request": {
+        "usage": "30m",
+        "target_utilization": 0.70,
+        "target_request": "43m",
+        "calculation": "30m / 0.70 = 42.86m ≈ 43m",
+        "rationale": "To achieve 70% utilization with 30m usage, request should be 43m"
+      },
+      "step_3_difference": {
+        "current_request": "100m",
+        "target_request": "43m",
+        "absolute_difference": "57m",
+        "percentage_difference": 0.57,
+        "calculation": "|43m - 100m| / 100m = 57 / 100 = 0.57 (57%)"
+      },
+      "step_4_threshold_check": {
+        "percentage_difference": 0.57,
+        "optimization_threshold": 0.10,
+        "exceeds_threshold": true,
+        "rationale": "57% > 10% threshold - optimization recommended"
+      },
+      "step_5_approval_check": {
+        "percentage_difference": 0.57,
+        "approval_threshold": 0.10,
+        "requires_approval": true,
+        "rationale": "57% change exceeds 10% approval threshold - requires human approval"
+      },
+      "recommendation": {
+        "action": "reduce_cpu_request",
+        "current_request": "100m",
+        "target_request": "43m",
+        "reduction": "57m",
+        "reduction_percentage": "57%",
+        "requires_approval": true
+      }
+    },
+
+    "memory_analysis": {
+      "step_1_current_utilization": {
+        "request": "128Mi",
+        "usage": "100Mi",
+        "utilization": 0.78,
+        "calculation": "100Mi / 128Mi = 0.78 (78%)"
+      },
+      "step_2_target_request": {
+        "usage": "100Mi",
+        "target_utilization": 0.80,
+        "target_request": "125Mi",
+        "calculation": "100Mi / 0.80 = 125Mi",
+        "rationale": "To achieve 80% utilization with 100Mi usage, request should be 125Mi"
+      },
+      "step_3_difference": {
+        "current_request": "128Mi",
+        "target_request": "125Mi",
+        "absolute_difference": "3Mi",
+        "percentage_difference": 0.023,
+        "calculation": "|125Mi - 128Mi| / 128Mi = 3 / 128 = 0.023 (2.3%)"
+      },
+      "step_4_threshold_check": {
+        "percentage_difference": 0.023,
+        "optimization_threshold": 0.10,
+        "exceeds_threshold": false,
+        "rationale": "2.3% < 10% threshold - no optimization needed"
+      },
+      "recommendation": {
+        "action": "no_action",
+        "reason": "within_optimization_threshold",
+        "rationale": "Memory utilization (78%) is close to target (80%). Difference (2.3%) is within optimization threshold (10%)."
+      }
+    }
+  },
+
+  "recommended_action": {
+    "action": "optimize_cpu_request",
+    "resource_type": "cpu",
+    "current_request": "100m",
+    "target_request": "43m",
+    "difference_percent": 0.57,
+    "requires_approval": true,
+    "rationale": "CPU usage (30m) is only 30% of request (100m). Target utilization is 70%. Recommend reducing CPU request to 43m (57% reduction). This significant change requires approval.",
+    "expected_outcome": {
+      "cpu_utilization_after": "~70% (30m / 43m)",
+      "cost_savings": "~57% reduction in CPU allocation per pod",
+      "risk": "Low - current usage is stable at 30m, well below proposed 43m request"
+    }
+  },
+
+  "governance_check": {
+    "operation": "change_resource_limits_beyond_10_percent",
+    "classification": "restricted",
+    "rationale": "CPU request change (57%) exceeds 10% threshold. This operation is in the 'requires_approval' list and needs human approval before execution.",
+    "requires_approval": true,
+    "approvers": ["devops-team"],
+    "approval_timeout": "1h",
+    "blueprint_references": [
+      "governance.agent_authority.requires_approval[1]",
+      "spec.resources.cpu.optimization_threshold"
+    ]
+  },
+
+  "approval_request": {
+    "request_id": "apr-20260210-154230-002",
+    "service": "todo-frontend",
+    "operation": "reduce_cpu_request",
+    "current_state": {
+      "cpu_request": "100m",
+      "cpu_usage": "30m",
+      "cpu_utilization": "30%"
+    },
+    "proposed_state": {
+      "cpu_request": "43m",
+      "expected_utilization": "70%"
+    },
+    "rationale": "CPU is significantly over-provisioned. Current usage (30m) is only 30% of request (100m). Reducing request to 43m will achieve target utilization (70%) while maintaining adequate headroom. This optimization will reduce resource costs by ~57% per pod.",
+    "risk_assessment": {
+      "risk_level": "low",
+      "rationale": "Current usage (30m) is stable over 7 days. Proposed request (43m) provides 43% headroom above current usage. CPU limit (200m) remains unchanged, providing burst capacity.",
+      "mitigation": "Monitor CPU usage for 24h after change. Rollback if usage approaches 90% of new request (39m)."
+    },
+    "cost_impact": {
+      "current_cost_per_pod": "~$5/month (estimated)",
+      "proposed_cost_per_pod": "~$2.15/month (estimated)",
+      "savings_per_pod": "~$2.85/month",
+      "total_savings": "~$5.70/month (2 replicas)",
+      "note": "Cost estimates are simulated for demonstration"
+    },
+    "rollback_plan": "If CPU utilization exceeds 90% of new request (39m) or latency degrades, immediately revert to 100m request. Rollback can be executed in <30s.",
+    "blueprint_references": [
+      "spec.resources.cpu.target_utilization",
+      "spec.resources.cpu.optimization_threshold",
+      "governance.agent_authority.requires_approval[1]"
+    ]
+  },
+
+  "blueprint_references": [
+    "spec.resources.cpu.request",
+    "spec.resources.cpu.target_utilization",
+    "spec.resources.cpu.optimization_threshold",
+    "spec.resources.memory.request",
+    "spec.resources.memory.target_utilization",
+    "spec.resources.memory.optimization_threshold"
+  ],
+
+  "metrics_breakdown": {
+    "cpu": {
+      "current_request": "100m",
+      "current_usage": "30m",
+      "current_utilization": "30%",
+      "target_utilization": "70%",
+      "target_request": "43m",
+      "optimization_needed": true,
+      "requires_approval": true
+    },
+    "memory": {
+      "current_request": "128Mi",
+      "current_usage": "100Mi",
+      "current_utilization": "78%",
+      "target_utilization": "80%",
+      "target_request": "125Mi",
+      "optimization_needed": false,
+      "requires_approval": false
+    }
+  },
+
+  "alternative_scenarios": {
+    "if_cpu_change_under_10_percent": {
+      "example": "If CPU usage was 65m instead of 30m",
+      "calculation": {
+        "usage": "65m",
+        "target_request": "93m",
+        "difference": "7m",
+        "percentage": "7%"
+      },
+      "action": "adjust_resources_within_10_percent",
+      "governance_classification": "allowed",
+      "requires_approval": false,
+      "rationale": "7% change is within 10% threshold - can be executed autonomously"
+    },
+    "if_memory_over_provisioned": {
+      "example": "If memory usage was 50Mi instead of 100Mi",
+      "calculation": {
+        "usage": "50Mi",
+        "target_request": "63Mi",
+        "difference": "65Mi",
+        "percentage": "51%"
+      },
+      "action": "reduce_memory_request",
+      "governance_classification": "restricted",
+      "requires_approval": true,
+      "rationale": "51% change exceeds 10% threshold - requires approval"
+    },
+    "if_under_provisioned": {
+      "example": "If CPU usage was 95m instead of 30m",
+      "calculation": {
+        "usage": "95m",
+        "current_utilization": "95%",
+        "target_utilization": "70%",
+        "target_request": "136m"
+      },
+      "action": "increase_cpu_request",
+      "governance_classification": "restricted",
+      "requires_approval": true,
+      "rationale": "Resource is under-provisioned. Increase needed to maintain performance."
+    }
+  },
+
+  "audit_trail": {
+    "decision_made_at": "2026-02-10T15:42:30Z",
+    "decision_made_by": "decision-engine-001",
+    "blueprint_version": "1.0.0",
+    "governance_classification": "restricted",
+    "approval_required": true,
+    "approval_request_sent": true,
+    "approval_request_id": "apr-20260210-154230-002",
+    "execution_authorized": false,
+    "awaiting_approval": true
+  },
+
+  "next_steps": {
+    "immediate": [
+      "Send approval request to devops-team",
+      "Notify via slack://devops-alerts",
+      "Wait for approval (timeout: 1h)",
+      "Log decision to audit trail"
+    ],
+    "if_approved": [
+      "Pass decision to Execution Engine",
+      "Execute: kubectl set resources deployment todo-frontend --requests=cpu=43m",
+      "Monitor CPU utilization for 24h",
+      "Verify no performance degradation"
+    ],
+    "if_rejected": [
+      "Log rejection reason",
+      "Do not execute optimization",
+      "Re-evaluate in 7 days with updated metrics"
+    ],
+    "if_timeout": [
+      "Auto-reject per governance policy",
+      "Log timeout event",
+      "Do not execute optimization"
+    ]
+  },
+
+  "observation_notes": {
+    "data_quality": "Metrics averaged over 7 days to ensure stability",
+    "confidence": "High - usage pattern is consistent",
+    "seasonality": "No significant daily or weekly patterns observed",
+    "recommendation": "Safe to optimize - usage is stable and well below proposed request"
+  }
+}

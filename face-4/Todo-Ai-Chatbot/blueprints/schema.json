@@ -1,0 +1,229 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://infra.spec-driven.io/v1/blueprint-schema.json",
+  "title": "Infrastructure Blueprint",
+  "description": "Schema for infrastructure blueprints that AI agents use to make autonomous infrastructure decisions",
+  "type": "object",
+  "required": ["apiVersion", "kind", "metadata", "spec", "governance"],
+  "properties": {
+    "apiVersion": {
+      "type": "string",
+      "const": "infra.spec-driven.io/v1",
+      "description": "API version for the blueprint schema"
+    },
+    "kind": {
+      "type": "string",
+      "const": "InfrastructureBlueprint",
+      "description": "Resource kind"
+    },
+    "metadata": {
+      "type": "object",
+      "required": ["name", "version", "owner", "description", "created"],
+      "properties": {
+        "name": {
+          "type": "string",
+          "pattern": "^[a-z0-9-]+$",
+          "description": "Unique name for this blueprint"
+        },
+        "version": {
+          "type": "string",
+          "pattern": "^\\d+\\.\\d+\\.\\d+$",
+          "description": "Semantic version (e.g., 1.0.0)"
+        },
+        "owner": {
+          "type": "string",
+          "description": "Team or person responsible"
+        },
+        "description": {
+          "type": "string",
+          "description": "Human-readable description"
+        },
+        "created": {
+          "type": "string",
+          "format": "date-time",
+          "description": "ISO 8601 timestamp"
+        }
+      }
+    },
+    "spec": {
+      "type": "object",
+      "required": ["resources", "performance", "scaling", "reliability", "deployment"],
+      "properties": {
+        "resources": {
+          "type": "object",
+          "required": ["cpu", "memory"],
+          "properties": {
+            "cpu": {
+              "type": "object",
+              "required": ["request", "limit", "target_utilization"],
+              "properties": {
+                "request": {"type": "string", "pattern": "^\\d+m?$"},
+                "limit": {"type": "string", "pattern": "^\\d+m?$"},
+                "target_utilization": {"type": "string", "pattern": "^\\d+%$"},
+                "optimization_threshold": {"type": "string", "pattern": "^\\d+%$"}
+              }
+            },
+            "memory": {
+              "type": "object",
+              "required": ["request", "limit", "target_utilization"],
+              "properties": {
+                "request": {"type": "string", "pattern": "^\\d+(Mi|Gi)$"},
+                "limit": {"type": "string", "pattern": "^\\d+(Mi|Gi)$"},
+                "target_utilization": {"type": "string", "pattern": "^\\d+%$"},
+                "optimization_threshold": {"type": "string", "pattern": "^\\d+%$"}
+              }
+            },
+            "disk": {
+              "type": "object",
+              "properties": {
+                "ephemeral_storage": {"type": "string", "pattern": "^\\d+(Mi|Gi)$"}
+              }
+            }
+          }
+        },
+        "performance": {
+          "type": "object",
+          "required": ["latency_p95", "throughput_min", "availability"],
+          "properties": {
+            "latency_p50": {"type": "string", "pattern": "^\\d+(ms|s)$"},
+            "latency_p95": {"type": "string", "pattern": "^\\d+(ms|s)$"},
+            "latency_p99": {"type": "string", "pattern": "^\\d+(ms|s)$"},
+            "throughput_min": {"type": "string", "pattern": "^\\d+ req/s$"},
+            "throughput_target": {"type": "string", "pattern": "^\\d+ req/s$"},
+            "availability": {"type": "string", "pattern": "^\\d+\\.\\d+%$"},
+            "error_rate_max": {"type": "string", "pattern": "^\\d+%$"}
+          }
+        },
+        "scaling": {
+          "type": "object",
+          "required": ["min_replicas", "max_replicas", "scale_up_threshold", "scale_down_threshold", "cooldown_period"],
+          "properties": {
+            "min_replicas": {"type": "integer", "minimum": 1},
+            "max_replicas": {"type": "integer", "minimum": 1},
+            "target_replicas": {"type": "integer", "minimum": 1},
+            "scale_up_threshold": {"type": "string", "pattern": "^\\d+%$"},
+            "scale_down_threshold": {"type": "string", "pattern": "^\\d+%$"},
+            "scale_up_increment": {"type": "integer", "minimum": 1},
+            "scale_down_increment": {"type": "integer", "minimum": 1},
+            "cooldown_period": {"type": "string", "pattern": "^\\d+(s|m|h)$"},
+            "metrics": {
+              "type": "array",
+              "items": {
+                "type": "object",
+                "required": ["type", "weight"],
+                "properties": {
+                  "type": {"type": "string", "enum": ["cpu", "memory", "latency", "throughput"]},
+                  "weight": {"type": "number", "minimum": 0, "maximum": 1}
+                }
+              }
+            }
+          }
+        },
+        "reliability": {
+          "type": "object",
+          "required": ["max_restart_count", "restart_backoff", "rollback_on_failure"],
+          "properties": {
+            "max_restart_count": {"type": "integer", "minimum": 1},
+            "restart_backoff": {"type": "string", "enum": ["exponential", "linear", "constant"]},
+            "rollback_on_failure": {"type": "boolean"},
+            "rollback_threshold": {"type": "integer", "minimum": 1},
+            "health_check_timeout": {"type": "string", "pattern": "^\\d+(s|m)$"},
+            "readiness_probe": {
+              "type": "object",
+              "required": ["initial_delay", "period", "timeout", "failure_threshold"],
+              "properties": {
+                "initial_delay": {"type": "string", "pattern": "^\\d+(s|m)$"},
+                "period": {"type": "string", "pattern": "^\\d+(s|m)$"},
+                "timeout": {"type": "string", "pattern": "^\\d+(s|m)$"},
+                "failure_threshold": {"type": "integer", "minimum": 1}
+              }
+            },
+            "liveness_probe": {
+              "type": "object",
+              "required": ["initial_delay", "period", "timeout", "failure_threshold"],
+              "properties": {
+                "initial_delay": {"type": "string", "pattern": "^\\d+(s|m)$"},
+                "period": {"type": "string", "pattern": "^\\d+(s|m)$"},
+                "timeout": {"type": "string", "pattern": "^\\d+(s|m)$"},
+                "failure_threshold": {"type": "integer", "minimum": 1}
+              }
+            }
+          }
+        },
+        "deployment": {
+          "type": "object",
+          "required": ["strategy", "max_surge", "max_unavailable"],
+          "properties": {
+            "strategy": {"type": "string", "enum": ["RollingUpdate", "Recreate"]},
+            "max_surge": {"type": "integer", "minimum": 0},
+            "max_unavailable": {"type": "integer", "minimum": 0},
+            "min_ready_seconds": {"type": "integer", "minimum": 0},
+            "revision_history_limit": {"type": "integer", "minimum": 0}
+          }
+        }
+      }
+    },
+    "governance": {
+      "type": "object",
+      "required": ["agent_authority", "approval_workflow", "audit"],
+      "properties": {
+        "agent_authority": {
+          "type": "object",
+          "required": ["allowed_operations", "requires_approval", "forbidden_operations"],
+          "properties": {
+            "allowed_operations": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "requires_approval": {
+              "type": "array",
+              "items": {"type": "string"}
+            },
+            "forbidden_operations": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            }
+          }
+        },
+        "approval_workflow": {
+          "type": "object",
+          "required": ["approvers", "timeout", "auto_reject_on_timeout"],
+          "properties": {
+            "approvers": {
+              "type": "array",
+              "items": {"type": "string"},
+              "minItems": 1
+            },
+            "timeout": {"type": "string", "pattern": "^\\d+(s|m|h)$"},
+            "auto_reject_on_timeout": {"type": "boolean"},
+            "notification_channels": {
+              "type": "array",
+              "items": {"type": "string"}
+            }
+          }
+        },
+        "audit": {
+          "type": "object",
+          "required": ["log_all_decisions", "log_all_operations", "retention_period", "log_format"],
+          "properties": {
+            "log_all_decisions": {"type": "boolean"},
+            "log_all_operations": {"type": "boolean"},
+            "retention_period": {"type": "string", "pattern": "^\\d+(d|w|m|y)$"},
+            "log_format": {"type": "string", "enum": ["json", "yaml", "text"]},
+            "log_destination": {"type": "string"}
+          }
+        }
+      }
+    },
+    "cost": {
+      "type": "object",
+      "properties": {
+        "monthly_budget": {"type": "string", "pattern": "^\\d+ USD$"},
+        "cost_per_replica": {"type": "string", "pattern": "^\\d+ USD$"},
+        "optimization_priority": {"type": "string", "enum": ["balanced", "cost", "performance"]}
+      }
+    }
+  }
+}

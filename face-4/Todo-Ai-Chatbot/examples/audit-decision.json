@@ -1,0 +1,115 @@
+{
+  "timestamp": "2026-02-10T15:30:00Z",
+  "event_type": "decision_made",
+  "log_id": "log-20260210-153000-001",
+  "agent_id": "decision-engine-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+
+  "decision": {
+    "decision_id": "dec-20260210-153000-001",
+    "decision_type": "scaling",
+    "decision_category": "autonomous",
+    "triggered_by": "metric_threshold_exceeded"
+  },
+
+  "current_state": {
+    "timestamp": "2026-02-10T15:29:45Z",
+    "replicas": 2,
+    "pods_running": 2,
+    "pods_ready": 2,
+    "metrics": {
+      "cpu_utilization": 0.85,
+      "memory_utilization": 0.70,
+      "latency_p50": 120,
+      "latency_p95": 180,
+      "latency_p99": 250,
+      "throughput": 180,
+      "error_rate": 0.005
+    }
+  },
+
+  "blueprint_targets": {
+    "cpu_target_utilization": 0.70,
+    "memory_target_utilization": 0.80,
+    "latency_p95_target": 200,
+    "scale_up_threshold": 0.80,
+    "scale_down_threshold": 0.30,
+    "min_replicas": 1,
+    "max_replicas": 5
+  },
+
+  "decision_logic": {
+    "step_1_calculate_weighted_utilization": {
+      "cpu_contribution": 0.425,
+      "memory_contribution": 0.210,
+      "latency_contribution": 0.180,
+      "weighted_utilization": 0.815,
+      "calculation": "(0.85 * 0.5) + (0.70 * 0.3) + (0.90 * 0.2) = 0.815"
+    },
+    "step_2_check_cooldown": {
+      "last_operation": "2026-02-10T15:25:00Z",
+      "seconds_elapsed": 345,
+      "cooldown_required": 60,
+      "cooldown_elapsed": true
+    },
+    "step_3_determine_action": {
+      "weighted_utilization": 0.815,
+      "scale_up_threshold": 0.80,
+      "comparison": "0.815 > 0.80",
+      "decision": "scale_up"
+    },
+    "step_4_check_limits": {
+      "current_replicas": 2,
+      "target_replicas": 3,
+      "min_replicas": 1,
+      "max_replicas": 5,
+      "within_limits": true
+    }
+  },
+
+  "recommended_action": {
+    "action": "scale_up",
+    "current_replicas": 2,
+    "target_replicas": 3,
+    "increment": 1,
+    "rationale": "Weighted utilization (81.5%) exceeds scale_up_threshold (80%). Current replicas (2) < max_replicas (5). Scaling to 3 replicas to reduce load and maintain performance targets."
+  },
+
+  "blueprint_references": [
+    "spec.scaling.scale_up_threshold",
+    "spec.scaling.max_replicas",
+    "spec.scaling.cooldown_period",
+    "spec.scaling.metrics[0].weight",
+    "spec.scaling.metrics[1].weight",
+    "spec.scaling.metrics[2].weight"
+  ],
+
+  "governance_check": {
+    "classification": "allowed",
+    "requires_approval": false,
+    "rationale": "Target replicas (3) is within blueprint limits (min: 1, max: 5)"
+  },
+
+  "expected_outcome": {
+    "cpu_utilization_after": 0.57,
+    "memory_utilization_after": 0.47,
+    "latency_p95_after": 150,
+    "improvement": "Reduced load per replica, improved latency"
+  },
+
+  "next_steps": {
+    "immediate": "Pass decision to Governance Enforcer for validation",
+    "after_governance": "Execute via Execution Engine if allowed",
+    "after_execution": "Verify outcome via Verification Engine"
+  },
+
+  "metadata": {
+    "decision_duration": "0.15s",
+    "metrics_collected_from": "prometheus",
+    "blueprint_loaded_from": "blueprints/frontend/blueprint.yaml",
+    "decision_confidence": "high"
+  },
+
+  "outcome": "decision_made"
+}

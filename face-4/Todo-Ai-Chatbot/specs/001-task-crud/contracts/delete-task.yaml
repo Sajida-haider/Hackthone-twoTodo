@@ -1,0 +1,88 @@
+openapi: 3.0.0
+info:
+  title: Delete Task API
+  version: 1.0.0
+  description: Delete a task for the authenticated user
+
+paths:
+  /api/tasks/{id}:
+    delete:
+      summary: Delete a task
+      description: |
+        Permanently deletes a task. Only the task owner can delete the task.
+        Returns 404 if task doesn't exist or doesn't belong to the user.
+        Deletion is permanent and cannot be undone.
+      operationId: deleteTask
+      tags:
+        - Tasks
+      security:
+        - BearerAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Task UUID
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      responses:
+        '204':
+          description: Task deleted successfully (no content)
+        '400':
+          description: Invalid task ID format
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Invalid task ID format"
+                code: "INVALID_ID"
+        '401':
+          description: Authentication error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Invalid or expired token"
+                code: "INVALID_TOKEN"
+        '404':
+          description: Task not found or doesn't belong to user
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Task not found"
+                code: "TASK_NOT_FOUND"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Internal server error"
+                code: "SERVER_ERROR"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Error:
+      type: object
+      required:
+        - detail
+        - code
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code

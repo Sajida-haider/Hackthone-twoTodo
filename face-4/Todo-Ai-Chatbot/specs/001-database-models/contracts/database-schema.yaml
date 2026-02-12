@@ -1,0 +1,207 @@
+openapi: 3.0.0
+info:
+  title: Database Schema Contract
+  description: OpenAPI-style schema definitions for database models
+  version: 1.0.0
+
+components:
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - completed
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Unique task identifier
+          example: 1
+        user_id:
+          type: string
+          description: Owner user identifier (from JWT token)
+          example: "user_abc123"
+        title:
+          type: string
+          maxLength: 500
+          description: Task title
+          example: "Buy groceries"
+        description:
+          type: string
+          maxLength: 5000
+          nullable: true
+          description: Optional task description
+          example: "Milk, eggs, bread, and vegetables"
+        completed:
+          type: boolean
+          default: false
+          description: Task completion status
+          example: false
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp in UTC
+          example: "2026-02-09T10:30:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp in UTC
+          example: "2026-02-09T15:45:00Z"
+
+    Conversation:
+      type: object
+      required:
+        - id
+        - user_id
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: integer
+          description: Unique conversation identifier
+          example: 1
+        user_id:
+          type: string
+          description: Owner user identifier (from JWT token)
+          example: "user_abc123"
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp in UTC
+          example: "2026-02-09T10:00:00Z"
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp in UTC (updates when messages added)
+          example: "2026-02-09T10:30:00Z"
+
+    Message:
+      type: object
+      required:
+        - id
+        - user_id
+        - conversation_id
+        - role
+        - content
+        - created_at
+      properties:
+        id:
+          type: integer
+          description: Unique message identifier
+          example: 1
+        user_id:
+          type: string
+          description: Owner user identifier (from JWT token)
+          example: "user_abc123"
+        conversation_id:
+          type: integer
+          description: Parent conversation identifier
+          example: 1
+        role:
+          type: string
+          enum:
+            - user
+            - assistant
+          description: Message sender role
+          example: "user"
+        content:
+          type: string
+          maxLength: 10000
+          description: Message content
+          example: "Hello! Can you help me with my tasks?"
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp in UTC
+          example: "2026-02-09T10:15:00Z"
+
+  # Database-specific metadata (not part of OpenAPI standard)
+  x-database-metadata:
+    tables:
+      task:
+        indexes:
+          - name: idx_task_user_id
+            columns: [user_id]
+            type: btree
+          - name: idx_task_completed
+            columns: [completed]
+            type: btree
+          - name: idx_task_user_completed
+            columns: [user_id, completed]
+            type: btree
+        constraints:
+          - type: primary_key
+            columns: [id]
+          - type: not_null
+            columns: [user_id, title, completed, created_at, updated_at]
+          - type: check
+            name: chk_title_not_empty
+            expression: "length(title) > 0"
+
+      conversation:
+        indexes:
+          - name: idx_conversation_user_id
+            columns: [user_id]
+            type: btree
+          - name: idx_conversation_updated_at
+            columns: [updated_at]
+            type: btree
+        constraints:
+          - type: primary_key
+            columns: [id]
+          - type: not_null
+            columns: [user_id, created_at, updated_at]
+
+      message:
+        indexes:
+          - name: idx_message_user_id
+            columns: [user_id]
+            type: btree
+          - name: idx_message_conversation_id
+            columns: [conversation_id]
+            type: btree
+          - name: idx_message_created_at
+            columns: [created_at]
+            type: btree
+          - name: idx_message_conversation_created
+            columns: [conversation_id, created_at]
+            type: btree
+        constraints:
+          - type: primary_key
+            columns: [id]
+          - type: foreign_key
+            columns: [conversation_id]
+            references:
+              table: conversation
+              columns: [id]
+            on_delete: CASCADE
+          - type: not_null
+            columns: [user_id, conversation_id, role, content, created_at]
+          - type: check
+            name: chk_role_valid
+            expression: "role IN ('user', 'assistant')"
+          - type: check
+            name: chk_content_not_empty
+            expression: "length(content) > 0"
+
+    relationships:
+      - from: message
+        to: conversation
+        type: many_to_one
+        foreign_key: conversation_id
+        cascade: delete
+      - from: task
+        to: user
+        type: many_to_one
+        note: "User managed by external auth system, no FK constraint"
+      - from: conversation
+        to: user
+        type: many_to_one
+        note: "User managed by external auth system, no FK constraint"
+      - from: message
+        to: user
+        type: many_to_one
+        note: "User managed by external auth system, no FK constraint"

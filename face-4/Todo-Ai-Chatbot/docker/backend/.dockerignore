@@ -1,0 +1,84 @@
+# Backend .dockerignore
+# Exclude files from Docker build context
+
+# Python cache
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv/
+
+# Testing
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.nox/
+
+# Environment files
+.env
+.env*.local
+.env.development
+.env.production
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.pydevproject
+.project
+.settings/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation
+README.md
+*.md
+!docker/backend/ENV_VARS.md
+
+# Docker files
+Dockerfile*
+.dockerignore
+docker-compose*.yml
+
+# CI/CD
+.github/
+.gitlab-ci.yml
+.travis.yml
+
+# Logs
+logs/
+*.log
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+
+# Alembic (keep alembic/ but exclude versions if needed)
+# alembic/versions/*.py
+
+# Test files
+tests/
+test_*.py
+*_test.py
+
+# Distribution
+dist/
+build/
+*.egg-info/

@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Debug Token - Todo App</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 40px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+        h1 { color: #333; }
+        .info {
+            background: #e3f2fd;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 10px 0;
+            font-family: monospace;
+        }
+        button {
+            padding: 10px 20px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin: 5px;
+        }
+        button:hover { background: #5568d3; }
+        .success { color: green; }
+        .error { color: red; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🔍 Token Debug</h1>
+
+        <h3>Current Token Status:</h3>
+        <div id="tokenStatus" class="info">Checking...</div>
+
+        <h3>Actions:</h3>
+        <button onclick="checkToken()">Refresh Token Status</button>
+        <button onclick="clearAndLogin()">Clear & Login Again</button>
+        <button onclick="testTaskCreation()">Test Task Creation</button>
+
+        <h3>Test Results:</h3>
+        <div id="results"></div>
+    </div>
+
+    <script>
+        function checkToken() {
+            const authToken = localStorage.getItem('auth_token');
+            const oldToken = localStorage.getItem('token');
+
+            let html = '';
+            html += '<strong>auth_token:</strong> ' + (authToken ? '✓ Found (' + authToken.substring(0, 30) + '...)' : '✗ Not found') + '<br>';
+            html += '<strong>token:</strong> ' + (oldToken ? '✓ Found (' + oldToken.substring(0, 30) + '...)' : '✗ Not found') + '<br>';
+
+            document.getElementById('tokenStatus').innerHTML = html;
+        }
+
+        async function clearAndLogin() {
+            const results = document.getElementById('results');
+            results.innerHTML = '<p>Clearing localStorage and logging in...</p>';
+
+            // Clear all tokens
+            localStorage.clear();
+
+            try {
+                const response = await fetch('http://localhost:8001/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'sajidahaider889@gmail.com',
+                        password: 'Pass123!'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    // Store with correct key
+                    localStorage.setItem('auth_token', data.access_token);
+                    results.innerHTML = '<p class="success">✓ Login successful! Token stored as "auth_token"</p>';
+                    checkToken();
+                } else {
+                    results.innerHTML = '<p class="error">✗ Login failed: ' + data.detail + '</p>';
+                }
+            } catch (error) {
+                results.innerHTML = '<p class="error">✗ Connection error: ' + error.message + '</p>';
+            }
+        }
+
+        async function testTaskCreation() {
+            const results = document.getElementById('results');
+            const token = localStorage.getItem('auth_token');
+
+            if (!token) {
+                results.innerHTML = '<p class="error">✗ No auth_token found! Please login first.</p>';
+                return;
+            }
+
+            results.innerHTML = '<p>Testing task creation...</p>';
+
+            try {
+                const response = await fetch('http://localhost:8001/api/v1/tasks', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify({
+                        title: 'Test Task from Debug',
+                        description: 'Testing task creation',
+                        completed: false
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok || response.status === 201) {
+                    results.innerHTML = '<p class="success">✓ Task created successfully!</p><pre>' + JSON.stringify(data, null, 2) + '</pre>';
+                } else {
+                    results.innerHTML = '<p class="error">✗ Task creation failed: ' + JSON.stringify(data) + '</p>';
+                }
+            } catch (error) {
+                results.innerHTML = '<p class="error">✗ Error: ' + error.message + '</p>';
+            }
+        }
+
+        // Check on load
+        checkToken();
+    </script>
+</body>
+</html>

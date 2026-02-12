@@ -1,0 +1,295 @@
+{
+  "verification_id": "ver-20260210-165200-002",
+  "timestamp": "2026-02-10T16:52:00Z",
+  "agent_id": "verification-engine-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+  "verification_type": "post_operation",
+
+  "operation_reference": {
+    "operation_id": "dec-20260210-164500-007",
+    "operation_type": "scale_down",
+    "executed_at": "2026-02-10T16:50:45Z",
+    "executed_by": "execution-engine-001"
+  },
+
+  "pre_operation_state": {
+    "timestamp": "2026-02-10T16:50:00Z",
+    "replicas": 3,
+    "pods_running": 3,
+    "pods_ready": 3,
+    "metrics": {
+      "cpu_utilization": 0.35,
+      "memory_utilization": 0.30,
+      "latency_p50": 90,
+      "latency_p95": 140,
+      "latency_p99": 180,
+      "throughput": 150,
+      "error_rate": 0.003
+    }
+  },
+
+  "operation_details": {
+    "action": "scale_down",
+    "from_replicas": 3,
+    "to_replicas": 2,
+    "reason": "low_utilization",
+    "weighted_utilization": 0.28
+  },
+
+  "stabilization": {
+    "stabilization_period": 60,
+    "stabilization_start": "2026-02-10T16:51:00Z",
+    "stabilization_end": "2026-02-10T16:52:00Z",
+    "rationale": "Wait 60 seconds for traffic to redistribute to remaining pods"
+  },
+
+  "post_operation_state": {
+    "timestamp": "2026-02-10T16:52:00Z",
+    "replicas": 2,
+    "pods_running": 2,
+    "pods_ready": 2,
+    "metrics": {
+      "cpu_utilization": 0.55,
+      "memory_utilization": 0.48,
+      "latency_p50": 180,
+      "latency_p95": 280,
+      "latency_p99": 450,
+      "throughput": 140,
+      "error_rate": 0.012
+    }
+  },
+
+  "blueprint_targets": {
+    "cpu_target_utilization": 0.70,
+    "memory_target_utilization": 0.80,
+    "latency_p95_target": 200,
+    "throughput_min": 100,
+    "error_rate_max": 0.01,
+    "availability_target": 0.999
+  },
+
+  "verification_checks": {
+    "check_1_replica_count": {
+      "check_name": "Replica Count",
+      "expected": 2,
+      "actual": 2,
+      "passed": true,
+      "severity": "critical",
+      "rationale": "Deployment scaled to target replica count"
+    },
+
+    "check_2_pod_status": {
+      "check_name": "Pod Status",
+      "expected": "2 pods Running and Ready",
+      "actual": "2 pods Running and Ready",
+      "passed": true,
+      "severity": "critical",
+      "rationale": "All pods are healthy and ready to serve traffic",
+      "pod_details": [
+        {"name": "todo-frontend-7d8f9c5b6-abc12", "status": "Running", "ready": true},
+        {"name": "todo-frontend-7d8f9c5b6-def34", "status": "Running", "ready": true}
+      ]
+    },
+
+    "check_3_cpu_utilization": {
+      "check_name": "CPU Utilization",
+      "expected": "~52% (35% * 1.5)",
+      "actual": 0.55,
+      "target": 0.70,
+      "acceptable_range": {"min": 0.47, "max": 0.57},
+      "passed": true,
+      "severity": "high",
+      "rationale": "CPU utilization (55%) is within acceptable range and below target (70%)"
+    },
+
+    "check_4_memory_utilization": {
+      "check_name": "Memory Utilization",
+      "expected": "~45% (30% * 1.5)",
+      "actual": 0.48,
+      "target": 0.80,
+      "acceptable_range": {"min": 0.41, "max": 0.49},
+      "passed": true,
+      "severity": "high",
+      "rationale": "Memory utilization (48%) is within acceptable range and below target (80%)"
+    },
+
+    "check_5_latency_p95": {
+      "check_name": "Latency P95",
+      "expected": "< 200ms",
+      "actual": 280,
+      "target": 200,
+      "passed": false,
+      "severity": "high",
+      "rationale": "FAILED: Latency P95 (280ms) exceeds blueprint target (200ms)",
+      "degradation": "Increased from 140ms to 280ms (+140ms, +100%)",
+      "impact": "User experience degraded - requests taking significantly longer"
+    },
+
+    "check_6_error_rate": {
+      "check_name": "Error Rate",
+      "expected": "< 1%",
+      "actual": 0.012,
+      "target": 0.01,
+      "passed": false,
+      "severity": "critical",
+      "rationale": "FAILED: Error rate (1.2%) exceeds blueprint threshold (1%)",
+      "degradation": "Increased from 0.3% to 1.2% (+0.9 percentage points)",
+      "impact": "Increased errors affecting user requests"
+    },
+
+    "check_7_throughput": {
+      "check_name": "Throughput",
+      "expected": "> 100 req/s",
+      "actual": 140,
+      "target_min": 100,
+      "passed": true,
+      "severity": "medium",
+      "rationale": "Throughput (140 req/s) still exceeds minimum target (100 req/s)",
+      "note": "Decreased from 150 req/s to 140 req/s (-10 req/s)"
+    },
+
+    "check_8_no_pod_restarts": {
+      "check_name": "No Pod Restarts",
+      "expected": "No restarts during verification period",
+      "actual": "0 restarts",
+      "passed": true,
+      "severity": "high",
+      "rationale": "No pods restarted during 60s verification period"
+    }
+  },
+
+  "verification_summary": {
+    "total_checks": 8,
+    "checks_passed": 6,
+    "checks_failed": 2,
+    "critical_checks_passed": 2,
+    "critical_checks_failed": 1,
+    "high_severity_checks_passed": 3,
+    "high_severity_checks_failed": 1,
+    "all_checks_passed": false
+  },
+
+  "verification_result": {
+    "status": "failed",
+    "outcome": "failure",
+    "rationale": "Verification failed: 2 checks failed (latency_p95, error_rate). Operation did not achieve intended outcome and violates blueprint targets.",
+    "rollback_triggered": true,
+    "operation_successful": false
+  },
+
+  "failure_analysis": {
+    "primary_failure": "latency_p95_exceeds_target",
+    "secondary_failure": "error_rate_exceeds_threshold",
+    "root_cause": "Insufficient capacity after scaling down - remaining 2 pods cannot handle load",
+    "impact_severity": "high",
+    "user_impact": "Degraded user experience - slow responses and increased errors",
+    "business_impact": "SLA violation - latency and error rate exceed acceptable thresholds"
+  },
+
+  "rollback_decision": {
+    "trigger_rollback": true,
+    "trigger_reason": "verification_failed",
+    "trigger_conditions_met": [
+      "Latency P95 (280ms) > target (200ms)",
+      "Error rate (1.2%) > threshold (1%)"
+    ],
+    "rollback_urgency": "immediate",
+    "rollback_rationale": "Operation caused performance degradation and SLA violation. Immediate rollback required to restore service quality."
+  },
+
+  "rollback_execution": {
+    "rollback_id": "rbk-20260210-165230-001",
+    "rollback_triggered_at": "2026-02-10T16:52:30Z",
+    "rollback_action": "scale_up",
+    "rollback_target": "Restore to 3 replicas",
+    "rollback_command": "kubectl scale deployment todo-frontend --replicas=3 -n todo-app",
+    "rollback_executed_at": "2026-02-10T16:52:35Z",
+    "rollback_duration": "5s"
+  },
+
+  "rollback_verification": {
+    "verification_id": "ver-20260210-165400-003",
+    "verification_timestamp": "2026-02-10T16:54:00Z",
+    "stabilization_period": 60,
+    "post_rollback_state": {
+      "replicas": 3,
+      "pods_running": 3,
+      "pods_ready": 3,
+      "metrics": {
+        "cpu_utilization": 0.38,
+        "memory_utilization": 0.32,
+        "latency_p50": 95,
+        "latency_p95": 145,
+        "latency_p99": 185,
+        "throughput": 148,
+        "error_rate": 0.004
+      }
+    },
+    "rollback_checks": {
+      "replicas_restored": {
+        "expected": 3,
+        "actual": 3,
+        "passed": true
+      },
+      "latency_restored": {
+        "expected": "< 200ms",
+        "actual": 145,
+        "passed": true,
+        "improvement": "Reduced from 280ms to 145ms"
+      },
+      "error_rate_restored": {
+        "expected": "< 1%",
+        "actual": 0.004,
+        "passed": true,
+        "improvement": "Reduced from 1.2% to 0.4%"
+      },
+      "all_targets_met": true
+    },
+    "rollback_status": "success",
+    "rollback_outcome": "Service quality restored. All metrics back within acceptable range."
+  },
+
+  "timeline": {
+    "t0_operation_executed": "2026-02-10T16:50:45Z (Scale down to 2 replicas)",
+    "t1_stabilization_start": "2026-02-10T16:51:00Z (Wait 60s)",
+    "t2_verification_start": "2026-02-10T16:52:00Z (Collect metrics)",
+    "t3_verification_failed": "2026-02-10T16:52:30Z (Latency/errors exceed targets)",
+    "t4_rollback_triggered": "2026-02-10T16:52:30Z (Immediate rollback decision)",
+    "t5_rollback_executed": "2026-02-10T16:52:35Z (Scale back to 3 replicas)",
+    "t6_rollback_stabilization": "2026-02-10T16:53:00Z (Wait 60s)",
+    "t7_rollback_verified": "2026-02-10T16:54:00Z (Metrics restored)",
+    "total_degradation_time": "3 minutes 15 seconds"
+  },
+
+  "lessons_learned": {
+    "decision_error": "Decision Engine underestimated load - 2 replicas insufficient",
+    "correction": "Update decision logic to be more conservative with scale-down decisions",
+    "recommendation": "Consider longer observation period before scaling down",
+    "positive_outcome": "Automatic rollback prevented prolonged service degradation"
+  },
+
+  "audit_trail": {
+    "verification_performed": true,
+    "failure_detected": true,
+    "rollback_triggered": true,
+    "rollback_executed": true,
+    "rollback_verified": true,
+    "all_events_logged": true,
+    "total_incident_duration": "3m 15s"
+  },
+
+  "notification": {
+    "required": true,
+    "notification_type": "verification_failure_and_rollback",
+    "severity": "warning",
+    "channels": ["slack://devops-alerts"],
+    "message": "⚠️ Verification Failed: Scale-down caused latency spike (280ms > 200ms target) and error rate increase (1.2% > 1% threshold). Automatic rollback executed. Service restored to 3 replicas. Metrics now within targets."
+  },
+
+  "key_takeaways": {
+    "for_operators": "Automatic rollback prevented prolonged service degradation. System self-corrected within 3 minutes. No manual intervention required.",
+    "for_agents": "Scale-down decision was too aggressive. Update decision logic to be more conservative. Rollback mechanism worked as designed.",
+    "for_capacity_planning": "3 replicas is minimum viable capacity for current load. Do not scale below 3 replicas without load reduction."
+  }
+}

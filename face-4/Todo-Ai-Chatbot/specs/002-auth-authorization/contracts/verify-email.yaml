@@ -1,0 +1,97 @@
+openapi: 3.0.3
+info:
+  title: Email Verification API
+  description: Endpoint for verifying user email addresses
+  version: 1.0.0
+
+paths:
+  /api/auth/verify-email:
+    get:
+      summary: Verify user email address
+      description: |
+        Verifies a user's email address using the token sent via email.
+        Token expires after 24 hours. Once verified, user can login.
+      operationId: verifyEmail
+      tags:
+        - Authentication
+      parameters:
+        - name: token
+          in: query
+          required: true
+          schema:
+            type: string
+            minLength: 32
+            maxLength: 255
+          description: Verification token from email link
+          example: abc123def456ghi789jkl012mno345pqr678stu901vwx234yz
+      responses:
+        '200':
+          description: Email verified successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Email verified successfully. You can now login.
+                  user_id:
+                    type: string
+                    format: uuid
+                    example: 550e8400-e29b-41d4-a716-446655440000
+        '400':
+          description: Invalid or expired token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              examples:
+                invalidToken:
+                  value:
+                    detail: Invalid verification token
+                expiredToken:
+                  value:
+                    detail: Verification token has expired. Please request a new one.
+                alreadyVerified:
+                  value:
+                    detail: Email already verified
+        '404':
+          description: Token not found
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Verification token not found
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Failed to verify email
+
+components:
+  schemas:
+    VerifyEmailResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string

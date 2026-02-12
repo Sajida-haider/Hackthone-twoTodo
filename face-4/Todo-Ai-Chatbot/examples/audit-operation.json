@@ -1,0 +1,123 @@
+{
+  "timestamp": "2026-02-10T15:30:45Z",
+  "event_type": "operation_executed",
+  "log_id": "log-20260210-153045-002",
+  "agent_id": "execution-engine-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+
+  "operation": {
+    "operation_id": "dec-20260210-153000-001",
+    "operation_type": "scale_up",
+    "operation_category": "scaling",
+    "triggered_by": "decision-engine-001",
+    "authorized_by": "governance-enforcer-001"
+  },
+
+  "pre_operation_state": {
+    "timestamp": "2026-02-10T15:30:40Z",
+    "replicas": 2,
+    "pods_running": 2,
+    "pods_ready": 2,
+    "deployment_revision": 5
+  },
+
+  "operation_details": {
+    "action": "scale_deployment",
+    "target": "todo-frontend",
+    "namespace": "todo-app",
+    "from_replicas": 2,
+    "to_replicas": 3,
+    "command": "kubectl scale deployment todo-frontend --replicas=3 -n todo-app",
+    "execution_method": "kubectl_cli",
+    "dry_run": false
+  },
+
+  "execution": {
+    "started_at": "2026-02-10T15:30:45Z",
+    "completed_at": "2026-02-10T15:30:47Z",
+    "duration": "2.3s",
+    "exit_code": 0,
+    "stdout": "deployment.apps/todo-frontend scaled",
+    "stderr": "",
+    "execution_host": "agent-controller-pod-abc123",
+    "kubernetes_api_version": "apps/v1"
+  },
+
+  "post_operation_state": {
+    "timestamp": "2026-02-10T15:30:50Z",
+    "replicas": 3,
+    "pods_running": 2,
+    "pods_ready": 2,
+    "pods_pending": 1,
+    "deployment_revision": 5,
+    "note": "New pod starting, not ready yet"
+  },
+
+  "governance_authorization": {
+    "check_id": "gov-20260210-153030-001",
+    "classification": "allowed",
+    "requires_approval": false,
+    "authorized_at": "2026-02-10T15:30:30Z",
+    "blueprint_references": [
+      "governance.agent_authority.allowed_operations[0]"
+    ]
+  },
+
+  "safety_checks": {
+    "circuit_breaker": {
+      "state": "closed",
+      "operations_allowed": true
+    },
+    "cooldown_period": {
+      "last_operation": "2026-02-10T15:25:00Z",
+      "cooldown_elapsed": true
+    },
+    "rate_limiting": {
+      "operations_last_hour": 2,
+      "within_limits": true
+    }
+  },
+
+  "verification_scheduled": {
+    "verification_id": "ver-20260210-153200-001",
+    "scheduled_at": "2026-02-10T15:32:00Z",
+    "stabilization_period": "60s",
+    "verification_agent": "verification-engine-001"
+  },
+
+  "blueprint_compliance": {
+    "operation_within_limits": true,
+    "target_replicas_valid": true,
+    "governance_rules_followed": true,
+    "safety_mechanisms_respected": true
+  },
+
+  "metadata": {
+    "operation_duration": "2.3s",
+    "kubectl_version": "v1.28.0",
+    "cluster_name": "todo-app-cluster",
+    "cluster_region": "us-east-1",
+    "operator_id": "agent-system"
+  },
+
+  "outcome": "success",
+  "outcome_details": {
+    "status": "executed_successfully",
+    "command_succeeded": true,
+    "deployment_updated": true,
+    "awaiting_verification": true
+  },
+
+  "next_steps": {
+    "immediate": "Wait for new pod to start (60s stabilization)",
+    "verification": "Verify outcome at 2026-02-10T15:32:00Z",
+    "monitoring": "Monitor metrics for performance improvement"
+  },
+
+  "related_logs": {
+    "decision_log_id": "log-20260210-153000-001",
+    "governance_log_id": "log-20260210-153030-003",
+    "verification_log_id": "log-20260210-153200-004"
+  }
+}

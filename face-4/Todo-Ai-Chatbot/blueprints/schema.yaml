@@ -1,0 +1,152 @@
+# Infrastructure Blueprint Schema
+
+# This schema defines the structure for infrastructure blueprints that AI agents
+# use to make autonomous infrastructure decisions.
+
+# Blueprints are the single source of truth for infrastructure requirements,
+# performance targets, scaling policies, and governance rules.
+
+apiVersion: infra.spec-driven.io/v1
+kind: InfrastructureBlueprint
+
+# Metadata section - identifies the blueprint and tracks versioning
+metadata:
+  name: string                    # Unique name for this blueprint (e.g., "todo-frontend")
+  version: string                 # Semantic version (e.g., "1.0.0")
+  owner: string                   # Team or person responsible (e.g., "devops-team")
+  description: string             # Human-readable description of what this blueprint governs
+  created: string                 # ISO 8601 timestamp (e.g., "2026-02-10T00:00:00Z")
+
+# Spec section - defines infrastructure requirements and targets
+spec:
+
+  # Resource requirements and targets
+  resources:
+    cpu:
+      request: string             # Guaranteed CPU allocation (e.g., "50m", "100m", "1")
+      limit: string               # Maximum CPU allowed (e.g., "200m", "500m", "2")
+      target_utilization: string  # Target CPU usage as percentage (e.g., "70%")
+      optimization_threshold: string  # Threshold for optimization recommendations (e.g., "10%")
+
+    memory:
+      request: string             # Guaranteed memory allocation (e.g., "128Mi", "256Mi", "1Gi")
+      limit: string               # Maximum memory allowed (e.g., "512Mi", "1Gi", "2Gi")
+      target_utilization: string  # Target memory usage as percentage (e.g., "80%")
+      optimization_threshold: string  # Threshold for optimization recommendations (e.g., "10%")
+
+    disk:
+      ephemeral_storage: string   # Ephemeral storage limit (e.g., "1Gi", "5Gi")
+
+  # Performance targets - agents ensure these are met
+  performance:
+    latency_p50: string           # 50th percentile latency target (e.g., "100ms")
+    latency_p95: string           # 95th percentile latency target (e.g., "200ms")
+    latency_p99: string           # 99th percentile latency target (e.g., "500ms")
+    throughput_min: string        # Minimum throughput (e.g., "100 req/s")
+    throughput_target: string     # Target throughput (e.g., "200 req/s")
+    availability: string          # Availability target (e.g., "99.9%")
+    error_rate_max: string        # Maximum error rate (e.g., "1%")
+
+  # Scaling policies - agents use these to make scaling decisions
+  scaling:
+    min_replicas: integer         # Minimum number of replicas (e.g., 1)
+    max_replicas: integer         # Maximum number of replicas (e.g., 5)
+    target_replicas: integer      # Target number of replicas under normal load (e.g., 2)
+    scale_up_threshold: string    # Scale up when utilization exceeds this (e.g., "80%")
+    scale_down_threshold: string  # Scale down when utilization below this (e.g., "30%")
+    scale_up_increment: integer   # Number of replicas to add when scaling up (e.g., 1)
+    scale_down_increment: integer # Number of replicas to remove when scaling down (e.g., 1)
+    cooldown_period: string       # Minimum time between scaling operations (e.g., "60s")
+    metrics:                      # Metrics to consider for scaling decisions
+      - type: string              # Metric type (e.g., "cpu", "memory", "latency")
+        weight: float             # Weight in scaling decision (e.g., 0.5)
+
+  # Reliability policies - agents use these for failure recovery
+  reliability:
+    max_restart_count: integer    # Maximum pod restarts before escalation (e.g., 3)
+    restart_backoff: string       # Restart backoff strategy (e.g., "exponential")
+    rollback_on_failure: boolean  # Whether to rollback on repeated failures (e.g., true)
+    rollback_threshold: integer   # Number of failures before rollback (e.g., 2)
+    health_check_timeout: string  # Timeout for health checks (e.g., "30s")
+    readiness_probe:
+      initial_delay: string       # Initial delay before first probe (e.g., "10s")
+      period: string              # How often to probe (e.g., "10s")
+      timeout: string             # Probe timeout (e.g., "5s")
+      failure_threshold: integer  # Failures before marking unready (e.g., 3)
+    liveness_probe:
+      initial_delay: string       # Initial delay before first probe (e.g., "30s")
+      period: string              # How often to probe (e.g., "30s")
+      timeout: string             # Probe timeout (e.g., "5s")
+      failure_threshold: integer  # Failures before restart (e.g., 3)
+
+  # Deployment strategy - how updates are rolled out
+  deployment:
+    strategy: string              # Deployment strategy (e.g., "RollingUpdate")
+    max_surge: integer            # Max pods above desired during update (e.g., 1)
+    max_unavailable: integer      # Max pods unavailable during update (e.g., 0)
+    min_ready_seconds: integer    # Min seconds before pod considered ready (e.g., 10)
+    revision_history_limit: integer  # Number of old ReplicaSets to keep (e.g., 5)
+
+# Governance section - defines agent authority and safety rules
+governance:
+
+  # Agent authority - what agents can and cannot do
+  agent_authority:
+
+    # Tier 1: Allowed operations (autonomous, no approval needed)
+    allowed_operations:
+      - string                    # Operation name (e.g., "scale_within_limits")
+                                  # Examples:
+                                  # - "scale_within_limits" (scale between min/max replicas)
+                                  # - "restart_failed_pods" (restart pods with RestartCount > 0)
+                                  # - "adjust_resources_within_10_percent" (adjust CPU/memory by ≤10%)
+
+    # Tier 2: Restricted operations (require human approval)
+    requires_approval:
+      - string                    # Operation name (e.g., "scale_beyond_limits")
+                                  # Examples:
+                                  # - "scale_beyond_limits" (scale beyond min/max replicas)
+                                  # - "change_resource_limits_beyond_10_percent" (adjust CPU/memory by >10%)
+                                  # - "modify_deployment_strategy" (change rolling update parameters)
+                                  # - "change_health_checks" (modify probe configurations)
+
+    # Tier 3: Forbidden operations (blocked, never allowed)
+    forbidden_operations:
+      - string                    # Operation name (e.g., "delete_deployment")
+                                  # Examples:
+                                  # - "delete_deployment" (delete the deployment)
+                                  # - "delete_service" (delete the service)
+                                  # - "modify_secrets" (modify secret values)
+                                  # - "change_network_policies" (modify network policies)
+
+  # Approval workflow - how restricted operations are approved
+  approval_workflow:
+    approvers:
+      - string                    # List of approvers (e.g., "devops-team", "sre-team")
+    timeout: string               # Approval timeout (e.g., "1h")
+    auto_reject_on_timeout: boolean  # Whether to auto-reject if timeout (e.g., true)
+    notification_channels:
+      - string                    # Notification channels (e.g., "slack://devops-alerts")
+
+  # Audit requirements - how decisions and operations are logged
+  audit:
+    log_all_decisions: boolean    # Whether to log all agent decisions (e.g., true)
+    log_all_operations: boolean   # Whether to log all operations (e.g., true)
+    retention_period: string      # How long to keep logs (e.g., "90d")
+    log_format: string            # Log format (e.g., "json")
+    log_destination: string       # Where to store logs (e.g., "logs/agent-decisions/")
+
+# Cost targets (optional, simulated for demo)
+cost:
+  monthly_budget: string          # Monthly budget (e.g., "100 USD")
+  cost_per_replica: string        # Estimated cost per replica (e.g., "20 USD")
+  optimization_priority: string   # Priority (e.g., "balanced", "cost", "performance")
+
+# Notes:
+# - All string values should be quoted in YAML
+# - All time durations use Go duration format (e.g., "60s", "1h", "30m")
+# - All percentages are strings with "%" suffix (e.g., "80%")
+# - All resource quantities use Kubernetes format (e.g., "100m" for CPU, "128Mi" for memory)
+# - Agents read this blueprint and make decisions based on these policies
+# - Blueprint changes trigger agent re-evaluation
+# - Version changes should follow semantic versioning

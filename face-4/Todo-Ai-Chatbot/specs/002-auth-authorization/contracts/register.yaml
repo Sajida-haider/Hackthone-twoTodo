@@ -1,0 +1,138 @@
+openapi: 3.0.3
+info:
+  title: User Registration API
+  description: Endpoint for user account registration
+  version: 1.0.0
+
+paths:
+  /api/auth/register:
+    post:
+      summary: Register a new user account
+      description: |
+        Creates a new user account with email and password. Sends a verification email
+        with a unique link that expires in 24 hours. Account is created in unverified state.
+      operationId: registerUser
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - email
+                - password
+              properties:
+                email:
+                  type: string
+                  format: email
+                  maxLength: 255
+                  description: User's email address (must be unique)
+                  example: user@example.com
+                password:
+                  type: string
+                  minLength: 8
+                  maxLength: 128
+                  description: |
+                    Password must contain:
+                    - At least 8 characters
+                    - At least one uppercase letter
+                    - At least one lowercase letter
+                    - At least one number
+                    - At least one special character
+                  example: SecurePass123!
+      responses:
+        '201':
+          description: User account created successfully
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Registration successful. Please check your email to verify your account.
+                  user_id:
+                    type: string
+                    format: uuid
+                    example: 550e8400-e29b-41d4-a716-446655440000
+                  email:
+                    type: string
+                    format: email
+                    example: user@example.com
+        '400':
+          description: Invalid request data
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Invalid email format
+              examples:
+                invalidEmail:
+                  value:
+                    detail: Invalid email format
+                weakPassword:
+                  value:
+                    detail: Password does not meet requirements
+                missingField:
+                  value:
+                    detail: Email and password are required
+        '409':
+          description: Email already registered
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Email already registered
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Failed to send verification email
+
+components:
+  schemas:
+    RegisterRequest:
+      type: object
+      required:
+        - email
+        - password
+      properties:
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        password:
+          type: string
+          minLength: 8
+          maxLength: 128
+
+    RegisterResponse:
+      type: object
+      properties:
+        message:
+          type: string
+        user_id:
+          type: string
+          format: uuid
+        email:
+          type: string
+          format: email
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string

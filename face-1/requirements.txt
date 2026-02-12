@@ -1,0 +1,2 @@
+# Memory-Based Console Todo App
+# No external dependencies required - uses only built-in Python libraries

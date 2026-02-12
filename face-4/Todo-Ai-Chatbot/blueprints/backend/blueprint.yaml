@@ -1,0 +1,220 @@
+apiVersion: infra.spec-driven.io/v1
+kind: InfrastructureBlueprint
+
+metadata:
+  name: todo-backend
+  version: 1.0.0
+  owner: devops-team
+  description: Infrastructure blueprint for Todo AI Chatbot backend (FastAPI application with AI integration)
+  created: "2026-02-10T00:00:00Z"
+
+spec:
+  # Resource requirements for the backend
+  # Backend is a FastAPI app with AI integration (OpenAI API calls), needs more resources
+  resources:
+    cpu:
+      request: 100m             # Guaranteed 100 millicores (0.1 CPU)
+                                # Rationale: FastAPI + AI processing requires more CPU than frontend
+      limit: 500m               # Maximum 500 millicores (0.5 CPU)
+                                # Rationale: AI API calls and JSON processing can spike CPU
+      target_utilization: 70%   # Target 70% CPU utilization
+                                # Rationale: Consistent with frontend, leaves headroom for AI bursts
+      optimization_threshold: 10%  # Optimize if usage differs by >10%
+
+    memory:
+      request: 256Mi            # Guaranteed 256 MiB
+                                # Rationale: Python runtime + FastAPI + in-memory caching
+      limit: 1Gi                # Maximum 1 GiB
+                                # Rationale: AI responses can be large, need buffer for caching
+      target_utilization: 80%   # Target 80% memory utilization
+                                # Rationale: Memory usage is predictable for API workloads
+      optimization_threshold: 10%  # Optimize if usage differs by >10%
+
+    disk:
+      ephemeral_storage: 2Gi    # 2 GiB ephemeral storage
+                                # Rationale: Logs, temporary files, SQLite cache (if used)
+
+  # Performance targets for API endpoints
+  # Backend is an API, so latency targets are stricter than frontend
+  performance:
+    latency_p50: 50ms           # 50th percentile: 50ms
+                                # Rationale: API should be fast for typical requests
+    latency_p95: 150ms          # 95th percentile: 150ms (PRIMARY TARGET)
+                                # Rationale: Stricter than frontend (150ms vs 200ms)
+    latency_p99: 300ms          # 99th percentile: 300ms
+                                # Rationale: Even AI-enhanced requests complete quickly
+    throughput_min: 50 req/s    # Minimum 50 requests/second
+                                # Rationale: Lower than frontend (frontend makes multiple API calls)
+    throughput_target: 100 req/s  # Target 100 requests/second
+                                # Rationale: Comfortable capacity for API workload
+    availability: 99.95%        # 99.95% availability (22 minutes downtime/month)
+                                # Rationale: Higher than frontend (backend is critical dependency)
+    error_rate_max: 0.5%        # Maximum 0.5% error rate
+                                # Rationale: Stricter than frontend (0.5% vs 1%)
+
+  # Scaling policies - backend scales more conservatively than frontend
+  scaling:
+    min_replicas: 1             # Minimum 1 replica
+                                # Rationale: Always have at least one pod running
+    max_replicas: 3             # Maximum 3 replicas
+                                # Rationale: Lower than frontend (backend is more resource-intensive)
+    target_replicas: 2          # Target 2 replicas under normal load
+                                # Rationale: Provides redundancy for critical backend
+    scale_up_threshold: 75%     # Scale up when utilization > 75%
+                                # Rationale: More aggressive than frontend (75% vs 80%)
+                                # Backend performance degrades faster under load
+    scale_down_threshold: 40%   # Scale down when utilization < 40%
+                                # Rationale: More conservative than frontend (40% vs 30%)
+                                # Keep capacity for sudden traffic spikes
+    scale_up_increment: 1       # Add 1 replica at a time
+                                # Rationale: Gradual scaling
+    scale_down_increment: 1     # Remove 1 replica at a time
+                                # Rationale: Gradual scaling
+    cooldown_period: 90s        # Wait 90 seconds between scaling operations
+                                # Rationale: Longer than frontend (90s vs 60s)
+                                # Backend takes longer to warm up (DB connections, caches)
+    metrics:                    # Metrics to consider for scaling
+      - type: cpu
+        weight: 0.4             # CPU is 40% of scaling decision
+      - type: memory
+        weight: 0.4             # Memory is 40% of scaling decision
+      - type: latency
+        weight: 0.2             # Latency is 20% of scaling decision
+                                # Rationale: CPU and memory equally important for backend
+
+  # Reliability policies - backend has stricter reliability requirements
+  reliability:
+    max_restart_count: 2        # Maximum 2 restarts before escalation
+                                # Rationale: Stricter than frontend (2 vs 3)
+                                # Backend failures are more critical
+    restart_backoff: exponential  # Exponential backoff between restarts
+                                # Rationale: Prevents rapid restart loops
+    rollback_on_failure: true   # Rollback on repeated failures
+                                # Rationale: Automatic recovery to last known good state
+    rollback_threshold: 2       # Rollback after 2 consecutive failures
+                                # Rationale: Same as frontend
+    health_check_timeout: 45s   # 45 second timeout for health checks
+                                # Rationale: Longer than frontend (45s vs 30s)
+                                # Backend needs time to establish DB connections
+
+    readiness_probe:
+      initial_delay: 15s        # Wait 15s before first readiness check
+                                # Rationale: Longer than frontend (15s vs 10s)
+                                # Backend needs time to connect to database
+      period: 10s               # Check every 10 seconds
+                                # Rationale: Same as frontend
+      timeout: 5s               # 5 second timeout per check
+                                # Rationale: Same as frontend
+      failure_threshold: 2      # 2 failures before marking unready
+                                # Rationale: Stricter than frontend (2 vs 3)
+                                # Backend failures should be detected quickly
+
+    liveness_probe:
+      initial_delay: 45s        # Wait 45s before first liveness check
+                                # Rationale: Longer than frontend (45s vs 30s)
+                                # Backend initialization is more complex
+      period: 30s               # Check every 30 seconds
+                                # Rationale: Same as frontend
+      timeout: 5s               # 5 second timeout per check
+      failure_threshold: 2      # 2 failures before restart
+                                # Rationale: Stricter than frontend (2 vs 3)
+
+  # Deployment strategy - backend uses more conservative rollout
+  deployment:
+    strategy: RollingUpdate     # Rolling update strategy
+                                # Rationale: Zero-downtime deployments
+    max_surge: 1                # Maximum 1 extra pod during update
+                                # Rationale: Same as frontend
+    max_unavailable: 0          # No pods unavailable during update
+                                # Rationale: Critical backend must stay available
+    min_ready_seconds: 15       # Pod must be ready for 15s before considered available
+                                # Rationale: Longer than frontend (15s vs 10s)
+                                # Ensure backend is fully initialized
+    revision_history_limit: 10  # Keep last 10 ReplicaSets
+                                # Rationale: More than frontend (10 vs 5)
+                                # Backend changes are more critical, keep more history
+
+# Governance rules - backend has stricter governance than frontend
+governance:
+
+  # Agent authority - three-tier classification
+  agent_authority:
+
+    # Tier 1: Allowed operations (autonomous, no approval needed)
+    allowed_operations:
+      - scale_within_limits           # Scale between min_replicas (1) and max_replicas (3)
+                                      # Rationale: Safe, reversible, within defined bounds
+      - restart_failed_pods           # Restart pods with RestartCount > 0
+                                      # Rationale: Standard recovery action
+      - adjust_resources_within_10_percent  # Adjust CPU/memory by ≤10%
+                                      # Rationale: Small optimizations, low risk
+
+    # Tier 2: Restricted operations (require human approval)
+    requires_approval:
+      - scale_beyond_limits           # Scale beyond max_replicas or below min_replicas
+                                      # Rationale: Backend capacity planning is critical
+      - change_resource_limits_beyond_10_percent  # Adjust CPU/memory by >10%
+                                      # Rationale: Significant change, needs review
+      - modify_deployment_strategy    # Change rolling update parameters
+                                      # Rationale: Affects deployment safety
+      - change_health_checks          # Modify probe configurations
+                                      # Rationale: Affects reliability detection
+      - modify_database_connections   # Change database connection settings
+                                      # Rationale: Backend-specific, affects data access
+      - change_ai_api_settings        # Change OpenAI API configuration
+                                      # Rationale: Backend-specific, affects AI functionality
+
+    # Tier 3: Forbidden operations (blocked, never allowed)
+    forbidden_operations:
+      - delete_deployment             # Delete the deployment
+                                      # Rationale: Causes complete service outage
+      - delete_service                # Delete the service
+                                      # Rationale: Breaks routing to pods
+      - modify_secrets                # Modify secret values
+                                      # Rationale: Security risk (DB passwords, API keys)
+      - change_network_policies       # Modify network policies
+                                      # Rationale: Security risk
+      - modify_database_schema        # Modify database schema
+                                      # Rationale: Data integrity risk, requires migration
+      - delete_persistent_volumes     # Delete persistent volumes
+                                      # Rationale: Data loss risk
+
+  # Approval workflow - same as frontend but with additional approvers
+  approval_workflow:
+    approvers:
+      - devops-team                   # DevOps team can approve
+      - backend-team                  # Backend team can also approve
+                                      # Rationale: Backend changes may need backend expertise
+    timeout: 1h                       # 1 hour timeout for approval
+                                      # Rationale: Same as frontend
+    auto_reject_on_timeout: true      # Auto-reject if no response
+                                      # Rationale: Prevents indefinite blocking
+    notification_channels:
+      - slack://devops-alerts         # Notify via Slack
+      - slack://backend-alerts        # Also notify backend team
+                                      # Rationale: Backend-specific channel for visibility
+
+  # Audit requirements - same as frontend
+  audit:
+    log_all_decisions: true           # Log every agent decision
+                                      # Rationale: Complete audit trail
+    log_all_operations: true          # Log every operation
+                                      # Rationale: Compliance and debugging
+    retention_period: 90d             # Keep logs for 90 days
+                                      # Rationale: Standard retention for compliance
+    log_format: json                  # JSON format
+                                      # Rationale: Structured, machine-readable
+    log_destination: logs/agent-decisions/  # Log directory
+                                      # Rationale: Centralized log storage
+
+# Cost targets (simulated for demo)
+cost:
+  monthly_budget: 150 USD             # $150/month budget
+                                      # Rationale: Higher than frontend ($150 vs $100)
+                                      # Backend is more resource-intensive
+  cost_per_replica: 50 USD            # $50/month per replica
+                                      # Rationale: Higher than frontend ($50 vs $20)
+                                      # Backend pods use more resources
+  optimization_priority: performance  # Performance-focused optimization
+                                      # Rationale: Backend performance is critical
+                                      # Different from frontend (performance vs balanced)

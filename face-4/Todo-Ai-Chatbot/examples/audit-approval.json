@@ -1,0 +1,148 @@
+{
+  "timestamp": "2026-02-10T17:15:00Z",
+  "event_type": "approval_granted",
+  "log_id": "log-20260210-171500-005",
+  "agent_id": "governance-enforcer-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+
+  "approval_request": {
+    "request_id": "apr-20260210-170000-002",
+    "created_at": "2026-02-10T17:00:00Z",
+    "operation_id": "dec-20260210-165500-004",
+    "operation_type": "scale_beyond_limits",
+    "classification": "restricted"
+  },
+
+  "operation_details": {
+    "current_state": {
+      "replicas": 5,
+      "max_replicas": 5,
+      "cpu_utilization": 0.92,
+      "latency_p95": 280
+    },
+    "proposed_state": {
+      "replicas": 6,
+      "max_replicas": 6
+    },
+    "rationale": "Sustained high load (92% utilization) for 15 minutes. Latency (280ms) exceeds target (200ms). Need to scale beyond current max_replicas."
+  },
+
+  "approval_workflow": {
+    "approvers_configured": ["devops-team"],
+    "notification_sent_at": "2026-02-10T17:00:05Z",
+    "notification_channels": ["slack://devops-alerts"],
+    "timeout_configured": "1h",
+    "timeout_at": "2026-02-10T18:00:00Z",
+    "auto_reject_on_timeout": true
+  },
+
+  "approval_response": {
+    "status": "approved",
+    "approver": "john.doe@example.com",
+    "approver_role": "devops-team",
+    "approved_at": "2026-02-10T17:15:00Z",
+    "response_time": "15 minutes",
+    "comment": "Approved - performance issue confirmed, cost increase justified. Monitor closely after scaling.",
+    "approval_method": "slack_button"
+  },
+
+  "risk_assessment": {
+    "risk_level": "medium",
+    "cost_impact": "+$20/month (20% increase)",
+    "performance_impact": "Expected improvement in latency",
+    "reversibility": "high",
+    "approver_acknowledged": true
+  },
+
+  "execution_authorization": {
+    "authorized": true,
+    "authorized_at": "2026-02-10T17:15:00Z",
+    "authorized_by": "john.doe@example.com",
+    "execution_scheduled": "immediate",
+    "execution_agent": "execution-engine-001"
+  },
+
+  "blueprint_references": [
+    "spec.scaling.max_replicas",
+    "governance.agent_authority.requires_approval[0]",
+    "governance.approval_workflow.approvers",
+    "governance.approval_workflow.timeout"
+  ],
+
+  "post_approval_actions": {
+    "update_blueprint": {
+      "action": "increase_max_replicas",
+      "from": 5,
+      "to": 6,
+      "temporary": false,
+      "note": "Permanent increase based on sustained load pattern"
+    },
+    "execute_operation": {
+      "operation_id": "dec-20260210-165500-004",
+      "command": "kubectl scale deployment todo-frontend --replicas=6 -n todo-app",
+      "scheduled_at": "2026-02-10T17:15:05Z"
+    },
+    "monitor_outcome": {
+      "verification_scheduled": "2026-02-10T17:16:30Z",
+      "monitoring_duration": "5 minutes"
+    }
+  },
+
+  "audit_trail": {
+    "request_created": "2026-02-10T17:00:00Z",
+    "notification_sent": "2026-02-10T17:00:05Z",
+    "approval_received": "2026-02-10T17:15:00Z",
+    "execution_authorized": "2026-02-10T17:15:00Z",
+    "total_approval_time": "15 minutes",
+    "within_timeout": true
+  },
+
+  "compliance": {
+    "approval_required": true,
+    "approval_obtained": true,
+    "approver_authorized": true,
+    "justification_provided": true,
+    "audit_trail_complete": true
+  },
+
+  "metadata": {
+    "approval_system": "slack_integration",
+    "approval_ui_version": "v2.1.0",
+    "notification_delivery_time": "0.5s",
+    "approver_timezone": "America/New_York"
+  },
+
+  "outcome": "approved",
+  "outcome_details": {
+    "status": "approval_granted",
+    "execution_authorized": true,
+    "operation_will_proceed": true,
+    "monitoring_required": true
+  },
+
+  "related_logs": {
+    "decision_log_id": "log-20260210-165500-001",
+    "governance_log_id": "log-20260210-170000-002",
+    "operation_log_id": "log-20260210-171505-006",
+    "verification_log_id": "log-20260210-171630-007"
+  },
+
+  "alternative_outcomes": {
+    "if_rejected": {
+      "status": "rejected",
+      "operation_blocked": true,
+      "alternative_actions": [
+        "Investigate code optimization opportunities",
+        "Review capacity planning",
+        "Consider temporary load reduction"
+      ]
+    },
+    "if_timeout": {
+      "status": "timeout",
+      "auto_reject": true,
+      "operation_blocked": true,
+      "escalation": "Alert on-call team about unresolved high load"
+    }
+  }
+}

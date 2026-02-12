@@ -1,0 +1,125 @@
+{
+  "governance_check_id": "gov-20260210-173000-003",
+  "timestamp": "2026-02-10T17:30:00Z",
+  "agent_id": "governance-enforcer-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+  "check_type": "pre_execution",
+
+  "operation": {
+    "operation_id": "dec-20260210-172500-005",
+    "type": "delete_deployment",
+    "source": "external-request",
+    "details": {
+      "deployment_name": "todo-frontend",
+      "namespace": "todo-app",
+      "reason": "cleanup_request",
+      "requested_by": "unknown"
+    },
+    "rationale": "Request to delete todo-frontend deployment"
+  },
+
+  "governance_classification": {
+    "classification": "forbidden",
+    "tier": 3,
+    "action": "block",
+    "requires_approval": false,
+    "can_execute_autonomously": false,
+    "can_execute_with_approval": false,
+    "blocked_reason": "operation_type_forbidden"
+  },
+
+  "classification_logic": {
+    "step_1_check_forbidden": {
+      "is_forbidden": true,
+      "rationale": "Operation type 'delete_deployment' is in forbidden_operations list",
+      "matching_forbidden_rule": "delete_deployment",
+      "rule_definition": "Deleting deployments is forbidden for autonomous agents due to high risk of service outage",
+      "forbidden_operations_list": [
+        "delete_deployment",
+        "delete_service",
+        "delete_persistent_volumes",
+        "modify_secrets",
+        "change_network_policies",
+        "modify_rbac"
+      ],
+      "immediate_block": true
+    }
+  },
+
+  "block_decision": {
+    "blocked": true,
+    "block_reason": "forbidden_operation",
+    "block_rationale": "Deleting deployments causes immediate service outage. This operation is forbidden for autonomous agents and cannot be approved. Manual execution by authorized humans is required.",
+    "severity": "critical"
+  },
+
+  "risk_analysis": {
+    "if_executed": {
+      "immediate_impact": "Complete service outage for todo-frontend",
+      "user_impact": "100% of frontend users unable to access application",
+      "recovery_time": "5-10 minutes to redeploy",
+      "business_impact": "Critical - complete service unavailability"
+    },
+    "why_forbidden": {
+      "reason_1": "Causes immediate service outage",
+      "reason_2": "Irreversible without redeployment",
+      "reason_3": "No legitimate autonomous use case"
+    }
+  },
+
+  "blueprint_references": {
+    "governance_rules": [
+      "governance.agent_authority.forbidden_operations[0]"
+    ]
+  },
+
+  "alternative_suggestions": {
+    "if_intent_is_cleanup": {
+      "suggestion": "Scale deployment to 0 replicas instead of deleting",
+      "command": "kubectl scale deployment todo-frontend --replicas=0 -n todo-app",
+      "classification": "restricted",
+      "requires_approval": true,
+      "rationale": "Scaling to 0 preserves deployment configuration for easy recovery"
+    },
+    "if_intent_is_troubleshooting": {
+      "suggestion": "Restart pods without deleting deployment",
+      "command": "kubectl rollout restart deployment/todo-frontend -n todo-app",
+      "classification": "allowed",
+      "requires_approval": false,
+      "rationale": "Restarts pods gracefully without losing deployment configuration"
+    }
+  },
+
+  "notification": {
+    "required": true,
+    "notification_type": "forbidden_operation_blocked",
+    "severity": "critical",
+    "channels": ["slack://devops-alerts", "slack://security-alerts"],
+    "message": "🚨 CRITICAL: Blocked attempt to delete todo-frontend deployment"
+  },
+
+  "audit_trail": {
+    "governance_check_performed": true,
+    "classification_logged": true,
+    "operation_blocked": true,
+    "notification_sent": true,
+    "security_alert_raised": true,
+    "block_timestamp": "2026-02-10T17:30:00Z"
+  },
+
+  "decision_summary": {
+    "operation": "Delete todo-frontend deployment",
+    "classification": "Forbidden (Tier 3)",
+    "authorization": "BLOCKED - Cannot be executed by agents",
+    "rationale": "Deletion is a forbidden operation that causes service outage. Must be executed manually by authorized humans.",
+    "next_step": "Block operation, alert security team, investigate source",
+    "manual_execution_required": true
+  },
+
+  "key_takeaways": {
+    "for_developers": "Forbidden operations are never executed by agents, even with approval. Design systems to avoid requiring destructive operations.",
+    "for_operators": "Forbidden operations require manual execution with proper authorization.",
+    "for_security": "Forbidden operation attempts may indicate security incidents. Investigate all blocked operations."
+  }
+}

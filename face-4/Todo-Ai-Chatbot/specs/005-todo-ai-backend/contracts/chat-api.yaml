@@ -1,0 +1,248 @@
+openapi: 3.0.3
+info:
+  title: Todo AI Chatbot Backend API
+  description: |
+    Backend API for Todo AI Chatbot that enables users to manage tasks through natural language conversations with an AI assistant.
+
+    The API uses JWT authentication and maintains stateless architecture with all conversation state persisted in the database.
+  version: 1.0.0
+  contact:
+    name: Todo AI Chatbot Team
+
+servers:
+  - url: http://localhost:8001
+    description: Local development server
+  - url: https://api.todo-chatbot.example.com
+    description: Production server
+
+security:
+  - BearerAuth: []
+
+paths:
+  /api/v1/chat:
+    post:
+      summary: Send message to AI assistant
+      description: |
+        Send a natural language message to the AI assistant and receive a response.
+        The assistant can perform task operations (add, list, update, complete, delete) based on user intent.
+
+        For new conversations, omit the conversation_id. For continuing conversations, include the conversation_id from previous responses.
+      operationId: sendChatMessage
+      tags:
+        - Chat
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChatRequest'
+            examples:
+              newConversation:
+                summary: Start new conversation
+                value:
+                  message: "Add a task to buy groceries tomorrow"
+              continueConversation:
+                summary: Continue existing conversation
+                value:
+                  message: "Show me all my tasks"
+                  conversation_id: 42
+      responses:
+        '200':
+          description: Successful response from AI assistant
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ChatResponse'
+              examples:
+                taskAdded:
+                  summary: Task added successfully
+                  value:
+                    conversation_id: 42
+                    response: "I've added the task 'Buy groceries' to your list with a due date of tomorrow."
+                    tool_calls:
+                      - tool: "add_task"
+                        parameters:
+                          title: "Buy groceries"
+                          due_date: "2026-02-11"
+                        result: "success"
+                        error_message: null
+                taskListed:
+                  summary: Tasks listed
+                  value:
+                    conversation_id: 42
+                    response: "Here are your tasks:\n1. Buy groceries (due tomorrow)\n2. Call dentist (due Friday)"
+                    tool_calls:
+                      - tool: "list_tasks"
+                        parameters:
+                          status: null
+                        result: "success"
+                        error_message: null
+        '400':
+          description: Bad request (invalid input)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                emptyMessage:
+                  summary: Empty message
+                  value:
+                    detail: "Message cannot be empty"
+                messageTooLong:
+                  summary: Message too long
+                  value:
+                    detail: "Message exceeds maximum length of 2000 characters"
+        '401':
+          description: Unauthorized (missing or invalid JWT token)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                missingToken:
+                  summary: Missing authentication token
+                  value:
+                    detail: "Authentication required"
+                invalidToken:
+                  summary: Invalid or expired token
+                  value:
+                    detail: "Invalid authentication token"
+        '403':
+          description: Forbidden (user doesn't own conversation)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                notOwner:
+                  summary: User doesn't own conversation
+                  value:
+                    detail: "You don't have access to this conversation"
+        '404':
+          description: Not found (conversation doesn't exist)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                conversationNotFound:
+                  summary: Conversation not found
+                  value:
+                    detail: "Conversation not found"
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                serverError:
+                  summary: Server error
+                  value:
+                    detail: "An error occurred while processing your request. Please try again."
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        JWT token issued by Better Auth authentication system.
+        Include the token in the Authorization header: `Authorization: Bearer <token>`
+
+  schemas:
+    ChatRequest:
+      type: object
+      required:
+        - message
+      properties:
+        message:
+          type: string
+          minLength: 1
+          maxLength: 2000
+          description: User's natural language message to the AI assistant
+          example: "Add a task to buy groceries tomorrow"
+        conversation_id:
+          type: integer
+          nullable: true
+          description: |
+            Optional conversation ID for continuing an existing conversation.
+            Omit this field to start a new conversation.
+          example: 42
+
+    ChatResponse:
+      type: object
+      required:
+        - conversation_id
+        - response
+        - tool_calls
+      properties:
+        conversation_id:
+          type: integer
+          description: |
+            ID of the conversation (new or existing).
+            Use this ID in subsequent requests to continue the conversation.
+          example: 42
+        response:
+          type: string
+          description: AI assistant's response text
+          example: "I've added the task 'Buy groceries' to your list."
+        tool_calls:
+          type: array
+          description: List of MCP tool invocations performed by the AI assistant
+          items:
+            $ref: '#/components/schemas/ToolCall'
+
+    ToolCall:
+      type: object
+      required:
+        - tool
+        - parameters
+        - result
+      properties:
+        tool:
+          type: string
+          description: Name of the MCP tool that was invoked
+          enum:
+            - add_task
+            - list_tasks
+            - update_task
+            - complete_task
+            - delete_task
+          example: "add_task"
+        parameters:
+          type: object
+          description: Parameters passed to the tool
+          additionalProperties: true
+          example:
+            title: "Buy groceries"
+            description: "Milk, eggs, bread"
+        result:
+          type: string
+          description: Result of the tool invocation
+          enum:
+            - success
+            - error
+          example: "success"
+        error_message:
+          type: string
+          nullable: true
+          description: Error message if result is "error"
+          example: null
+
+    ErrorResponse:
+      type: object
+      required:
+        - detail
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+          example: "Message cannot be empty"
+
+tags:
+  - name: Chat
+    description: Chat endpoints for interacting with AI assistant

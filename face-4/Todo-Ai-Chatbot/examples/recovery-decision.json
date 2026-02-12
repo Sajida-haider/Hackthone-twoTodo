@@ -1,0 +1,308 @@
+{
+  "decision_id": "dec-20260210-160815-003",
+  "timestamp": "2026-02-10T16:08:15Z",
+  "agent_id": "decision-engine-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+  "decision_type": "failure_recovery",
+
+  "current_state": {
+    "pod_name": "todo-frontend-7d8f9c5b6-xk2m9",
+    "pod_status": "CrashLoopBackOff",
+    "restart_count": 2,
+    "last_restart": "2026-02-10T16:05:00Z",
+    "last_state": {
+      "terminated": {
+        "exit_code": 1,
+        "reason": "Error",
+        "message": "Application failed to start: Connection refused to database"
+      }
+    },
+    "container_logs_tail": [
+      "2026-02-10T16:05:00Z [ERROR] Failed to connect to database at postgres://db:5432",
+      "2026-02-10T16:05:00Z [ERROR] Connection refused",
+      "2026-02-10T16:05:00Z [FATAL] Application startup failed"
+    ],
+    "deployment_replicas": {
+      "desired": 2,
+      "ready": 1,
+      "available": 1,
+      "unavailable": 1
+    }
+  },
+
+  "blueprint_targets": {
+    "max_restart_count": 3,
+    "restart_backoff": "exponential",
+    "rollback_on_failure": true,
+    "rollback_threshold": 2,
+    "health_check_timeout": "30s"
+  },
+
+  "decision_logic": {
+    "step_1_assess_failure": {
+      "pod_name": "todo-frontend-7d8f9c5b6-xk2m9",
+      "status": "CrashLoopBackOff",
+      "restart_count": 2,
+      "exit_code": 1,
+      "failure_type": "application_error",
+      "rationale": "Pod is failing to start due to application error (exit code 1)"
+    },
+
+    "step_2_check_restart_limit": {
+      "restart_count": 2,
+      "max_restart_count": 3,
+      "within_limit": true,
+      "calculation": "2 < 3",
+      "rationale": "Restart count (2) is below max_restart_count (3) - can attempt restart"
+    },
+
+    "step_3_check_rollback_threshold": {
+      "restart_count": 2,
+      "rollback_threshold": 2,
+      "rollback_on_failure": true,
+      "threshold_reached": true,
+      "calculation": "2 >= 2",
+      "rationale": "Restart count (2) has reached rollback_threshold (2) and rollback_on_failure is enabled"
+    },
+
+    "step_4_determine_action": {
+      "restart_count": 2,
+      "max_restart_count": 3,
+      "rollback_threshold": 2,
+      "rollback_on_failure": true,
+      "decision": "trigger_rollback",
+      "reason": "rollback_threshold_exceeded",
+      "rationale": "Pod has reached rollback_threshold (2) and rollback_on_failure is enabled. Automatic rollback will be triggered to restore service stability."
+    }
+  },
+
+  "recommended_action": {
+    "action": "trigger_rollback",
+    "reason": "rollback_threshold_exceeded",
+    "pod_name": "todo-frontend-7d8f9c5b6-xk2m9",
+    "restart_count": 2,
+    "rollback_threshold": 2,
+    "rationale": "Pod has restart_count (2) >= rollback_threshold (2). Blueprint policy 'rollback_on_failure: true' mandates automatic rollback. This will revert to the previous stable deployment revision.",
+    "rollback_details": {
+      "current_revision": 5,
+      "target_revision": 4,
+      "rollback_command": "kubectl rollout undo deployment/todo-frontend -n todo-app",
+      "expected_outcome": "Deployment will revert to revision 4, which was last known stable version"
+    }
+  },
+
+  "governance_check": {
+    "operation": "trigger_rollback",
+    "classification": "allowed",
+    "rationale": "Automatic rollback is in the 'allowed_operations' list when triggered by blueprint policy (rollback_on_failure: true and restart_count >= rollback_threshold). This is a safety mechanism and can be executed autonomously.",
+    "requires_approval": false,
+    "blueprint_references": [
+      "governance.agent_authority.allowed_operations",
+      "spec.reliability.rollback_on_failure",
+      "spec.reliability.rollback_threshold"
+    ]
+  },
+
+  "blueprint_references": [
+    "spec.reliability.max_restart_count",
+    "spec.reliability.rollback_threshold",
+    "spec.reliability.rollback_on_failure",
+    "spec.reliability.restart_backoff"
+  ],
+
+  "failure_analysis": {
+    "root_cause": "database_connection_failure",
+    "evidence": [
+      "Exit code 1 (application error)",
+      "Log message: 'Connection refused to database'",
+      "Pod status: CrashLoopBackOff"
+    ],
+    "impact": {
+      "service_availability": "50% (1 of 2 replicas available)",
+      "user_impact": "Degraded - reduced capacity",
+      "severity": "high"
+    },
+    "likely_cause": "Recent deployment (revision 5) introduced database connection issue or database service is unavailable"
+  },
+
+  "risk_assessment": {
+    "risk_level": "low",
+    "rationale": "Rollback to revision 4 is low risk. Revision 4 was stable and running successfully before this deployment. Rollback is a standard recovery mechanism.",
+    "rollback_confidence": "high",
+    "alternative_if_rollback_fails": "If rollback fails, escalate to approval workflow for manual intervention"
+  },
+
+  "execution_plan": {
+    "immediate_actions": [
+      {
+        "step": 1,
+        "action": "Execute rollback",
+        "command": "kubectl rollout undo deployment/todo-frontend -n todo-app",
+        "expected_duration": "30-60s"
+      },
+      {
+        "step": 2,
+        "action": "Monitor rollback progress",
+        "command": "kubectl rollout status deployment/todo-frontend -n todo-app",
+        "expected_duration": "60s"
+      },
+      {
+        "step": 3,
+        "action": "Verify all pods healthy",
+        "command": "kubectl get pods -n todo-app -l app=todo-frontend",
+        "expected_outcome": "2/2 pods Running and Ready"
+      }
+    ],
+    "verification_steps": [
+      "Wait 60s for rollback to complete",
+      "Verify all pods are in Running state",
+      "Verify readiness probes passing",
+      "Monitor error rate for 5 minutes",
+      "Verify latency_p95 < 200ms"
+    ],
+    "success_criteria": {
+      "all_pods_running": true,
+      "all_pods_ready": true,
+      "error_rate": "< 1%",
+      "latency_p95": "< 200ms",
+      "no_restarts": "for 5 minutes"
+    }
+  },
+
+  "notification": {
+    "channels": ["slack://devops-alerts"],
+    "message": "🚨 Automatic rollback triggered for todo-frontend\n\nReason: Pod restart count (2) reached rollback threshold (2)\nPod: todo-frontend-7d8f9c5b6-xk2m9\nFailure: Database connection refused\nAction: Rolling back from revision 5 to revision 4\nStatus: In progress...",
+    "severity": "warning",
+    "include_logs": true
+  },
+
+  "audit_trail": {
+    "decision_made_at": "2026-02-10T16:08:15Z",
+    "decision_made_by": "decision-engine-001",
+    "blueprint_version": "1.0.0",
+    "governance_classification": "allowed",
+    "approval_required": false,
+    "execution_authorized": true,
+    "rollback_triggered": true,
+    "rollback_reason": "rollback_threshold_exceeded"
+  },
+
+  "alternative_scenarios": {
+    "scenario_1_restart_within_limit": {
+      "condition": "restart_count < rollback_threshold",
+      "example": {
+        "restart_count": 1,
+        "rollback_threshold": 2
+      },
+      "decision": {
+        "action": "restart_pod",
+        "reason": "within_restart_limit",
+        "rationale": "Pod has restart_count (1) < rollback_threshold (2). Attempt restart before triggering rollback.",
+        "governance_classification": "allowed",
+        "requires_approval": false
+      },
+      "execution": {
+        "command": "kubectl delete pod todo-frontend-7d8f9c5b6-xk2m9 -n todo-app",
+        "expected_outcome": "Kubernetes will create new pod automatically"
+      }
+    },
+
+    "scenario_2_max_restarts_exceeded": {
+      "condition": "restart_count >= max_restart_count",
+      "example": {
+        "restart_count": 3,
+        "max_restart_count": 3
+      },
+      "decision": {
+        "action": "escalate_to_approval",
+        "reason": "max_restarts_exceeded",
+        "rationale": "Pod has restart_count (3) >= max_restart_count (3). Automatic recovery has failed. Escalating to approval workflow for manual intervention.",
+        "governance_classification": "restricted",
+        "requires_approval": true
+      },
+      "approval_request": {
+        "recommended_action": "rollback_deployment",
+        "alternative_actions": [
+          "Investigate root cause and fix",
+          "Scale down to 0 and investigate",
+          "Rollback to earlier revision"
+        ],
+        "urgency": "high",
+        "impact": "Service degraded - manual intervention required"
+      }
+    },
+
+    "scenario_3_rollback_disabled": {
+      "condition": "rollback_on_failure = false",
+      "example": {
+        "restart_count": 2,
+        "rollback_threshold": 2,
+        "rollback_on_failure": false
+      },
+      "decision": {
+        "action": "restart_pod",
+        "reason": "rollback_disabled",
+        "rationale": "Restart count reached threshold but rollback_on_failure is disabled. Continue attempting restarts until max_restart_count is reached.",
+        "governance_classification": "allowed",
+        "requires_approval": false
+      }
+    },
+
+    "scenario_4_multiple_pods_failing": {
+      "condition": "Multiple pods in CrashLoopBackOff",
+      "example": {
+        "failing_pods": 2,
+        "total_pods": 2,
+        "failure_rate": "100%"
+      },
+      "decision": {
+        "action": "immediate_rollback",
+        "reason": "widespread_failure",
+        "rationale": "All pods are failing. This indicates a deployment-wide issue. Trigger immediate rollback without waiting for individual pod restart thresholds.",
+        "governance_classification": "allowed",
+        "requires_approval": false,
+        "urgency": "critical"
+      }
+    }
+  },
+
+  "post_rollback_actions": {
+    "immediate": [
+      "Verify service is stable after rollback",
+      "Collect logs from failed pods for analysis",
+      "Document failure in incident log"
+    ],
+    "investigation": [
+      "Analyze why revision 5 failed",
+      "Check database connectivity from pods",
+      "Review deployment changes between revision 4 and 5",
+      "Identify root cause (code bug, config error, infrastructure issue)"
+    ],
+    "prevention": [
+      "Fix identified issue in revision 5",
+      "Add integration tests for database connectivity",
+      "Consider canary deployment strategy for future releases",
+      "Update readiness probe to catch database connection issues earlier"
+    ]
+  },
+
+  "next_steps": {
+    "immediate": [
+      "Execute rollback command",
+      "Monitor rollback progress",
+      "Verify service stability",
+      "Send notification to devops-team"
+    ],
+    "short_term": [
+      "Investigate root cause of failure",
+      "Fix issue in revision 5",
+      "Test fix in staging environment"
+    ],
+    "long_term": [
+      "Review deployment strategy",
+      "Consider implementing canary deployments",
+      "Improve health checks to detect issues earlier"
+    ]
+  }
+}

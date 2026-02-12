@@ -1,0 +1,208 @@
+{
+  "decision_id": "dec-20260210-153045-001",
+  "timestamp": "2026-02-10T15:30:45Z",
+  "agent_id": "decision-engine-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+  "decision_type": "scaling",
+
+  "current_state": {
+    "replicas": 2,
+    "cpu_utilization": 0.85,
+    "memory_utilization": 0.70,
+    "latency_p95": 180,
+    "latency_p95_target": 200,
+    "throughput": 180,
+    "error_rate": 0.005,
+    "last_scaling_operation": "2026-02-10T15:25:00Z",
+    "seconds_since_last_operation": 345
+  },
+
+  "blueprint_targets": {
+    "min_replicas": 1,
+    "max_replicas": 5,
+    "scale_up_threshold": 0.80,
+    "scale_down_threshold": 0.30,
+    "cooldown_period": 60,
+    "metrics": [
+      {
+        "type": "cpu",
+        "weight": 0.5
+      },
+      {
+        "type": "memory",
+        "weight": 0.3
+      },
+      {
+        "type": "latency",
+        "weight": 0.2
+      }
+    ]
+  },
+
+  "decision_logic": {
+    "step_1_calculate_weighted_utilization": {
+      "cpu_contribution": {
+        "value": 0.85,
+        "weight": 0.5,
+        "weighted_value": 0.425,
+        "calculation": "0.85 * 0.5 = 0.425"
+      },
+      "memory_contribution": {
+        "value": 0.70,
+        "weight": 0.3,
+        "weighted_value": 0.210,
+        "calculation": "0.70 * 0.3 = 0.210"
+      },
+      "latency_contribution": {
+        "value": 0.90,
+        "weight": 0.2,
+        "weighted_value": 0.180,
+        "calculation": "180ms / 200ms target = 0.90; 0.90 * 0.2 = 0.180",
+        "note": "Latency normalized to 0-1 scale based on target"
+      },
+      "weighted_utilization": 0.815,
+      "calculation": "0.425 + 0.210 + 0.180 = 0.815 (81.5%)"
+    },
+
+    "step_2_check_cooldown": {
+      "cooldown_period": 60,
+      "seconds_since_last_operation": 345,
+      "cooldown_elapsed": true,
+      "rationale": "345s > 60s cooldown period - OK to proceed"
+    },
+
+    "step_3_determine_action": {
+      "weighted_utilization": 0.815,
+      "scale_up_threshold": 0.80,
+      "scale_down_threshold": 0.30,
+      "comparison": "0.815 > 0.80",
+      "decision": "scale_up",
+      "reason": "Weighted utilization exceeds scale_up_threshold"
+    },
+
+    "step_4_check_limits": {
+      "current_replicas": 2,
+      "target_replicas": 3,
+      "min_replicas": 1,
+      "max_replicas": 5,
+      "within_limits": true,
+      "rationale": "3 replicas is between min (1) and max (5) - OK to scale"
+    }
+  },
+
+  "recommended_action": {
+    "action": "scale_up",
+    "current_replicas": 2,
+    "target_replicas": 3,
+    "increment": 1,
+    "rationale": "Weighted utilization (81.5%) exceeds scale_up_threshold (80%). Current replicas (2) < max_replicas (5). Scaling to 3 replicas to reduce load and maintain performance targets.",
+    "expected_outcome": {
+      "cpu_utilization_after": "~57% (assuming linear distribution)",
+      "memory_utilization_after": "~47%",
+      "latency_p95_after": "~120ms (expected improvement)",
+      "weighted_utilization_after": "~54%"
+    }
+  },
+
+  "governance_check": {
+    "operation": "scale_within_limits",
+    "classification": "allowed",
+    "rationale": "Target replicas (3) is within blueprint limits (min: 1, max: 5). This operation is in the 'allowed_operations' list and can be executed autonomously.",
+    "requires_approval": false,
+    "blueprint_references": [
+      "governance.agent_authority.allowed_operations[0]",
+      "spec.scaling.min_replicas",
+      "spec.scaling.max_replicas"
+    ]
+  },
+
+  "blueprint_references": [
+    "spec.scaling.scale_up_threshold",
+    "spec.scaling.max_replicas",
+    "spec.scaling.cooldown_period",
+    "spec.scaling.metrics[0].weight",
+    "spec.scaling.metrics[1].weight",
+    "spec.scaling.metrics[2].weight"
+  ],
+
+  "metrics_breakdown": {
+    "cpu": {
+      "current": "85%",
+      "status": "high",
+      "contribution_to_decision": "50%"
+    },
+    "memory": {
+      "current": "70%",
+      "status": "moderate",
+      "contribution_to_decision": "30%"
+    },
+    "latency": {
+      "current": "180ms",
+      "target": "200ms",
+      "status": "approaching_limit",
+      "contribution_to_decision": "20%"
+    }
+  },
+
+  "risk_assessment": {
+    "risk_level": "low",
+    "rationale": "Scaling from 2 to 3 replicas is a conservative increment. Operation is within blueprint limits and is classified as 'allowed'. Rollback is straightforward if needed.",
+    "rollback_plan": "If performance degrades or errors increase, scale back to 2 replicas. Monitor for 60s after scaling to verify improvement."
+  },
+
+  "execution_plan": {
+    "command": "kubectl scale deployment todo-frontend --replicas=3 -n todo-app",
+    "verification_steps": [
+      "Wait 30s for new pod to become ready",
+      "Verify all 3 pods are in Running state",
+      "Monitor CPU utilization for 60s",
+      "Verify latency_p95 < 200ms",
+      "Verify error_rate < 1%"
+    ],
+    "rollback_trigger": "If latency_p95 > 200ms or error_rate > 1% after 60s, rollback to 2 replicas"
+  },
+
+  "audit_trail": {
+    "decision_made_at": "2026-02-10T15:30:45Z",
+    "decision_made_by": "decision-engine-001",
+    "blueprint_version": "1.0.0",
+    "governance_classification": "allowed",
+    "approval_required": false,
+    "execution_authorized": true
+  },
+
+  "next_steps": {
+    "immediate": [
+      "Pass decision to Execution Engine for kubectl execution",
+      "Log decision to audit trail",
+      "Start verification timer (60s)"
+    ],
+    "post_execution": [
+      "Verify outcome matches expected results",
+      "Update last_scaling_operation timestamp",
+      "Monitor for cooldown period (60s) before next scaling decision"
+    ]
+  },
+
+  "alternative_scenarios": {
+    "if_at_max_replicas": {
+      "action": "no_action",
+      "reason": "at_max_replicas",
+      "rationale": "Already at max_replicas (5). Cannot scale further. Recommend increasing max_replicas if sustained high utilization.",
+      "governance_classification": "blocked_by_limits"
+    },
+    "if_cooldown_not_elapsed": {
+      "action": "no_action",
+      "reason": "cooldown_period_not_elapsed",
+      "rationale": "Last scaling operation was less than 60s ago. Wait for cooldown period to elapse.",
+      "governance_classification": "blocked_by_cooldown"
+    },
+    "if_scale_beyond_max": {
+      "action": "request_approval",
+      "reason": "scale_beyond_limits",
+      "rationale": "Scaling to 6 replicas exceeds max_replicas (5). Requires approval to increase max_replicas.",
+      "governance_classification": "restricted"
+    }
+  }
+}

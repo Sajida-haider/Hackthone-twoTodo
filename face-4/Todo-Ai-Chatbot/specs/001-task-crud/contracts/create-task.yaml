@@ -1,0 +1,162 @@
+openapi: 3.0.0
+info:
+  title: Create Task API
+  version: 1.0.0
+  description: Create a new task for the authenticated user
+
+paths:
+  /api/tasks:
+    post:
+      summary: Create a new task
+      description: |
+        Creates a new task for the authenticated user. The task is automatically
+        associated with the user extracted from the JWT token. Status defaults to "pending".
+      operationId: createTask
+      tags:
+        - Tasks
+      security:
+        - BearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - title
+              properties:
+                title:
+                  type: string
+                  minLength: 1
+                  maxLength: 200
+                  description: Task title (required, 1-200 characters)
+                  example: "Buy groceries"
+                description:
+                  type: string
+                  maxLength: 2000
+                  nullable: true
+                  description: Optional task description (max 2000 characters)
+                  example: "Milk, eggs, bread, and vegetables"
+                due_date:
+                  type: string
+                  format: date-time
+                  nullable: true
+                  description: Optional due date in ISO 8601 format
+                  example: "2026-02-15T10:00:00Z"
+      responses:
+        '201':
+          description: Task created successfully
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              example:
+                id: "550e8400-e29b-41d4-a716-446655440000"
+                user_id: "123e4567-e89b-12d3-a456-426614174000"
+                title: "Buy groceries"
+                description: "Milk, eggs, bread, and vegetables"
+                status: "pending"
+                due_date: "2026-02-15T10:00:00Z"
+                created_at: "2026-02-08T12:00:00Z"
+                updated_at: "2026-02-08T12:00:00Z"
+        '400':
+          description: Validation error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              examples:
+                emptyTitle:
+                  value:
+                    detail: "Title cannot be empty"
+                    code: "INVALID_TITLE"
+                titleTooLong:
+                  value:
+                    detail: "Title must be 200 characters or less"
+                    code: "TITLE_TOO_LONG"
+        '401':
+          description: Authentication error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Invalid or expired token"
+                code: "INVALID_TOKEN"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Internal server error"
+                code: "SERVER_ERROR"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token from Better Auth
+
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+          description: Unique task identifier
+        user_id:
+          type: string
+          format: uuid
+          description: Owner user ID
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+          description: Task title
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+          description: Task description
+        status:
+          type: string
+          enum: [pending, completed]
+          description: Task completion status
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+          description: Optional due date
+        created_at:
+          type: string
+          format: date-time
+          description: Creation timestamp
+        updated_at:
+          type: string
+          format: date-time
+          description: Last modification timestamp
+
+    Error:
+      type: object
+      required:
+        - detail
+        - code
+      properties:
+        detail:
+          type: string
+          description: Human-readable error message
+        code:
+          type: string
+          description: Machine-readable error code

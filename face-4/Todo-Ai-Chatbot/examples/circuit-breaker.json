@@ -1,0 +1,260 @@
+{
+  "circuit_breaker_event_id": "cb-20260210-170400-001",
+  "timestamp": "2026-02-10T17:04:00Z",
+  "agent_id": "governance-enforcer-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+  "event_type": "circuit_breaker_opened",
+
+  "circuit_breaker_config": {
+    "enabled": true,
+    "failure_threshold": 3,
+    "reset_timeout": "1h",
+    "reset_timeout_seconds": 3600,
+    "failure_window": "5m",
+    "failure_window_seconds": 300
+  },
+
+  "failure_history": [
+    {
+      "failure_number": 1,
+      "timestamp": "2026-02-10T17:00:00Z",
+      "operation_id": "dec-20260210-170000-001",
+      "operation_type": "scale_up",
+      "target": "Scale from 5 to 6 replicas",
+      "failure_reason": "Insufficient cluster capacity",
+      "error_message": "Error from server (Forbidden): pods 'todo-frontend-xyz' is forbidden: exceeded quota: compute-resources, requested: cpu=100m, used: cpu=9900m, limited: cpu=10000m",
+      "severity": "high",
+      "impact": "Operation failed, service remains at 5 replicas"
+    },
+    {
+      "failure_number": 2,
+      "timestamp": "2026-02-10T17:02:00Z",
+      "operation_id": "dec-20260210-170200-002",
+      "operation_type": "adjust_resources",
+      "target": "Reduce CPU request from 100m to 50m",
+      "failure_reason": "Pods failed to restart after resource change",
+      "error_message": "Pod todo-frontend-abc123 failed to start: CrashLoopBackOff - OOMKilled",
+      "severity": "critical",
+      "impact": "1 pod down, service degraded to 4/5 replicas"
+    },
+    {
+      "failure_number": 3,
+      "timestamp": "2026-02-10T17:04:00Z",
+      "operation_id": "dec-20260210-170400-003",
+      "operation_type": "restart_pod",
+      "target": "Restart failed pod todo-frontend-abc123",
+      "failure_reason": "Pod continues to crash after restart",
+      "error_message": "Pod todo-frontend-abc123 in CrashLoopBackOff: Back-off restarting failed container",
+      "severity": "critical",
+      "impact": "Pod cannot be recovered, service remains degraded"
+    }
+  ],
+
+  "circuit_breaker_state_transition": {
+    "previous_state": "closed",
+    "new_state": "open",
+    "transition_reason": "Consecutive failures (3) reached threshold (3)",
+    "transition_timestamp": "2026-02-10T17:04:00Z"
+  },
+
+  "circuit_breaker_status": {
+    "state": "open",
+    "consecutive_failures": 3,
+    "failure_threshold": 3,
+    "threshold_reached": true,
+    "operations_allowed": false,
+    "manual_reset_required": true,
+    "opened_at": "2026-02-10T17:04:00Z",
+    "reset_available_at": "2026-02-10T18:04:00Z",
+    "time_until_half_open": "1h"
+  },
+
+  "impact_analysis": {
+    "operations_blocked": "All autonomous agent operations",
+    "affected_services": ["todo-frontend"],
+    "current_service_state": {
+      "replicas": 5,
+      "pods_running": 4,
+      "pods_ready": 4,
+      "pods_failed": 1,
+      "service_degraded": true
+    },
+    "user_impact": "Service degraded but operational (4/5 replicas healthy)",
+    "business_impact": "Medium - reduced capacity, no complete outage"
+  },
+
+  "root_cause_analysis": {
+    "primary_cause": "Cluster resource exhaustion",
+    "contributing_factors": [
+      "Cluster CPU quota reached (9900m / 10000m used)",
+      "Attempted resource reduction caused OOMKilled",
+      "Pod configuration issue preventing restart"
+    ],
+    "pattern": "Cascading failures - initial capacity issue led to attempted optimization which made situation worse",
+    "lesson": "Circuit breaker correctly stopped automation before causing further damage"
+  },
+
+  "blocked_operations": [
+    {
+      "timestamp": "2026-02-10T17:06:00Z",
+      "operation_id": "dec-20260210-170600-004",
+      "operation_type": "scale_up",
+      "blocked": true,
+      "block_reason": "circuit_breaker_open",
+      "would_have_executed": "Scale to 6 replicas",
+      "rationale": "Circuit breaker prevents further operations until root cause addressed"
+    },
+    {
+      "timestamp": "2026-02-10T17:08:00Z",
+      "operation_id": "dec-20260210-170800-005",
+      "operation_type": "restart_pod",
+      "blocked": true,
+      "block_reason": "circuit_breaker_open",
+      "would_have_executed": "Restart failed pod",
+      "rationale": "Circuit breaker prevents repeated restart attempts"
+    }
+  ],
+
+  "notification": {
+    "sent": true,
+    "timestamp": "2026-02-10T17:04:05Z",
+    "severity": "critical",
+    "channels": ["slack://devops-alerts", "pagerduty://devops-oncall", "email://devops-team@example.com"],
+    "message": {
+      "title": "🚨 CRITICAL: Circuit Breaker Activated - todo-frontend",
+      "summary": "Agent operations blocked after 3 consecutive failures. Manual intervention required.",
+      "details": {
+        "service": "todo-frontend",
+        "consecutive_failures": 3,
+        "failure_threshold": 3,
+        "circuit_state": "OPEN",
+        "operations_blocked": true,
+        "recent_failures": [
+          "17:00:00 - scale_up failed: Insufficient cluster capacity",
+          "17:02:00 - adjust_resources failed: Pods failed to restart (OOMKilled)",
+          "17:04:00 - restart_pod failed: Pod CrashLoopBackOff"
+        ]
+      },
+      "action_required": [
+        "Investigate root cause of failures",
+        "Check cluster capacity and resource quotas",
+        "Fix pod configuration issue",
+        "Manually reset circuit breaker after fix",
+        "Monitor operations after reset"
+      ],
+      "manual_reset_command": "kubectl annotate deployment todo-frontend circuit-breaker-reset=true -n todo-app"
+    }
+  },
+
+  "investigation_guidance": {
+    "immediate_checks": [
+      "Check cluster resource quotas: kubectl describe quota -n todo-app",
+      "Check pod status: kubectl get pods -l app=todo-frontend -n todo-app",
+      "Check pod logs: kubectl logs todo-frontend-abc123 -n todo-app",
+      "Check pod events: kubectl describe pod todo-frontend-abc123 -n todo-app"
+    ],
+    "likely_issues": [
+      "Cluster CPU quota exhausted - need to increase quota or reduce usage",
+      "Pod memory configuration too low - causing OOMKilled",
+      "Application bug causing crashes",
+      "Configuration error in deployment"
+    ],
+    "recommended_fixes": [
+      "Increase cluster CPU quota if justified",
+      "Restore pod resource requests to previous working values",
+      "Fix application bug if identified",
+      "Review and correct deployment configuration"
+    ]
+  },
+
+  "manual_reset_procedure": {
+    "step_1": {
+      "action": "Investigate root cause",
+      "command": "kubectl describe quota -n todo-app && kubectl get pods -l app=todo-frontend -n todo-app",
+      "expected_outcome": "Identify why operations are failing"
+    },
+    "step_2": {
+      "action": "Fix underlying issue",
+      "example_fixes": [
+        "Increase cluster quota: kubectl patch resourcequota compute-resources --patch '{\"spec\":{\"hard\":{\"cpu\":\"15000m\"}}}'",
+        "Restore pod resources: kubectl set resources deployment todo-frontend --requests=cpu=100m,memory=128Mi",
+        "Delete failed pod: kubectl delete pod todo-frontend-abc123 -n todo-app"
+      ],
+      "expected_outcome": "Issue resolved, system stable"
+    },
+    "step_3": {
+      "action": "Reset circuit breaker",
+      "command": "kubectl annotate deployment todo-frontend circuit-breaker-reset=true -n todo-app",
+      "expected_outcome": "Circuit breaker transitions to CLOSED state"
+    },
+    "step_4": {
+      "action": "Monitor operations",
+      "command": "kubectl logs -f deployment/agent-controller -n agent-system",
+      "expected_outcome": "Operations succeed, no new failures"
+    }
+  },
+
+  "timeline": {
+    "t0_first_failure": "2026-02-10T17:00:00Z (scale_up failed)",
+    "t1_second_failure": "2026-02-10T17:02:00Z (adjust_resources failed)",
+    "t2_third_failure": "2026-02-10T17:04:00Z (restart_pod failed)",
+    "t3_circuit_opened": "2026-02-10T17:04:00Z (Circuit breaker activated)",
+    "t4_notification_sent": "2026-02-10T17:04:05Z (Alerts sent)",
+    "t5_operations_blocked": "2026-02-10T17:06:00Z onwards (All operations blocked)",
+    "t6_half_open_available": "2026-02-10T18:04:00Z (Automatic transition to half-open)",
+    "total_failure_duration": "4 minutes (from first failure to circuit open)"
+  },
+
+  "alternative_scenarios": {
+    "if_threshold_was_5": {
+      "failures_needed": 5,
+      "current_failures": 3,
+      "circuit_state": "closed",
+      "operations_allowed": true,
+      "note": "Circuit would remain closed, allowing 2 more failures before opening"
+    },
+    "if_failure_window_was_10m": {
+      "failure_window": "10m",
+      "failures_in_window": 3,
+      "circuit_state": "open",
+      "note": "All 3 failures within 10 minute window, circuit would still open"
+    },
+    "if_one_success_between_failures": {
+      "failure_sequence": ["fail", "fail", "success", "fail"],
+      "consecutive_failures": 1,
+      "circuit_state": "closed",
+      "note": "Success resets counter, circuit remains closed"
+    }
+  },
+
+  "post_reset_expectations": {
+    "after_manual_reset": {
+      "circuit_state": "closed",
+      "operations_allowed": true,
+      "failure_count_reset": true,
+      "monitoring_required": "High - watch for recurring failures"
+    },
+    "after_timeout_half_open": {
+      "circuit_state": "half_open",
+      "test_operation_allowed": true,
+      "if_test_succeeds": "Transition to CLOSED",
+      "if_test_fails": "Transition back to OPEN"
+    }
+  },
+
+  "audit_trail": {
+    "circuit_breaker_opened": true,
+    "all_failures_logged": true,
+    "notification_sent": true,
+    "operations_blocked": true,
+    "manual_intervention_required": true,
+    "incident_created": true
+  },
+
+  "key_takeaways": {
+    "for_operators": "Circuit breaker prevented further damage by stopping automation after 3 failures. Investigate cluster capacity and pod configuration before resetting.",
+    "for_agents": "Circuit breaker correctly identified cascading failures and stopped operations. This is working as designed.",
+    "for_capacity_planning": "Cluster CPU quota is at 99% utilization. Need to increase quota or reduce usage to prevent future issues."
+  }
+}

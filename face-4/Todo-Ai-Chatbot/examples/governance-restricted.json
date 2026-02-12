@@ -1,0 +1,324 @@
+{
+  "governance_check_id": "gov-20260210-170000-002",
+  "timestamp": "2026-02-10T17:00:00Z",
+  "agent_id": "governance-enforcer-001",
+  "service": "todo-frontend",
+  "blueprint_version": "1.0.0",
+  "check_type": "pre_execution",
+
+  "operation": {
+    "operation_id": "dec-20260210-165500-004",
+    "type": "scale_up",
+    "source": "decision-engine-001",
+    "details": {
+      "current_replicas": 5,
+      "target_replicas": 6,
+      "reason": "sustained_high_utilization",
+      "weighted_utilization": 0.92,
+      "scale_up_threshold": 0.80,
+      "current_max_replicas": 5
+    },
+    "rationale": "Weighted utilization (92%) significantly exceeds scale_up_threshold (80%). Current replicas (5) at max_replicas limit. System under sustained load for 15 minutes. Recommend increasing max_replicas to 6 and scaling to 6 replicas."
+  },
+
+  "governance_classification": {
+    "classification": "restricted",
+    "tier": 2,
+    "action": "request_approval",
+    "requires_approval": true,
+    "can_execute_autonomously": false,
+    "approval_required_reason": "scale_beyond_limits"
+  },
+
+  "classification_logic": {
+    "step_1_check_forbidden": {
+      "is_forbidden": false,
+      "rationale": "Operation type 'scale_up' is not in forbidden_operations list",
+      "forbidden_operations_checked": [
+        "delete_deployment",
+        "delete_service",
+        "delete_persistent_volumes",
+        "modify_secrets",
+        "change_network_policies",
+        "modify_rbac"
+      ]
+    },
+
+    "step_2_check_restricted": {
+      "is_restricted": true,
+      "rationale": "Target replicas (6) exceeds blueprint max_replicas (5)",
+      "limits_check": {
+        "min_replicas": 1,
+        "max_replicas": 5,
+        "target_replicas": 6,
+        "within_limits": false,
+        "calculation": "6 > 5 (max_replicas) → Exceeds limit"
+      },
+      "matching_restricted_rule": "scale_beyond_limits",
+      "rule_definition": "Scaling beyond max_replicas or below min_replicas requires approval",
+      "restricted_operations_list": [
+        "scale_beyond_limits",
+        "change_resource_limits_beyond_10_percent",
+        "modify_deployment_strategy",
+        "change_health_checks"
+      ]
+    },
+
+    "step_3_check_allowed": {
+      "is_allowed": false,
+      "rationale": "Operation exceeds blueprint limits, cannot be classified as allowed"
+    }
+  },
+
+  "blueprint_references": {
+    "governance_rules": [
+      "governance.agent_authority.requires_approval[0]"
+    ],
+    "scaling_limits": [
+      "spec.scaling.max_replicas"
+    ],
+    "decision_criteria": [
+      "spec.scaling.scale_up_threshold"
+    ]
+  },
+
+  "approval_request": {
+    "request_id": "apr-20260210-170000-002",
+    "created_at": "2026-02-10T17:00:00Z",
+    "service": "todo-frontend",
+    "blueprint_version": "1.0.0",
+
+    "operation_details": {
+      "type": "scale_beyond_limits",
+      "current_state": {
+        "replicas": 5,
+        "max_replicas": 5,
+        "cpu_utilization": 0.90,
+        "memory_utilization": 0.85,
+        "latency_p95": 280,
+        "latency_p95_target": 200,
+        "error_rate": 0.008,
+        "sustained_high_load_duration": "15 minutes"
+      },
+      "proposed_state": {
+        "replicas": 6,
+        "max_replicas": 6,
+        "expected_cpu_utilization": 0.75,
+        "expected_memory_utilization": 0.71,
+        "expected_latency_p95": 180
+      }
+    },
+
+    "rationale": {
+      "problem": "System is under sustained high load (92% weighted utilization) for 15 minutes. Current replicas (5) at max_replicas limit. Latency (280ms) exceeds target (200ms). Unable to scale further without increasing max_replicas.",
+      "proposed_solution": "Increase max_replicas from 5 to 6 and scale to 6 replicas. This will reduce per-replica load and bring latency back within target.",
+      "why_approval_needed": "Increasing max_replicas exceeds blueprint limits and requires human judgment on capacity planning and cost implications.",
+      "blueprint_references": [
+        "spec.scaling.max_replicas",
+        "spec.performance.latency_p95",
+        "governance.agent_authority.requires_approval[0]"
+      ]
+    },
+
+    "risk_assessment": {
+      "risk_level": "medium",
+      "impact_analysis": {
+        "performance": "Positive - Expected to reduce latency from 280ms to 180ms",
+        "availability": "Positive - Reduces risk of service degradation",
+        "cost": "Negative - Increases resource allocation by 20% (5→6 replicas)",
+        "capacity": "Requires verification that cluster has capacity for additional replica"
+      },
+      "reversibility": "High - Can scale back to 5 replicas immediately if needed",
+      "blast_radius": "Single service (todo-frontend only)",
+      "failure_scenarios": [
+        "Insufficient cluster capacity - scaling will fail, no impact",
+        "Performance does not improve - can rollback to 5 replicas",
+        "Cost exceeds budget - can scale back after review"
+      ]
+    },
+
+    "cost_impact": {
+      "current_monthly_cost": "$100 (5 replicas × $20/replica)",
+      "proposed_monthly_cost": "$120 (6 replicas × $20/replica)",
+      "increase": "$20/month (20% increase)",
+      "budget_status": "Within monthly budget of $150",
+      "cost_justification": "Performance degradation impacts user experience. 20% cost increase is justified to maintain SLA."
+    },
+
+    "rollback_plan": {
+      "trigger_conditions": [
+        "Performance does not improve within 5 minutes",
+        "Latency remains above 250ms",
+        "Error rate increases above 1%",
+        "Cost concerns raised by stakeholders"
+      ],
+      "rollback_action": "Scale back to 5 replicas, revert max_replicas to 5",
+      "rollback_command": "kubectl scale deployment todo-frontend --replicas=5 -n todo-app",
+      "rollback_duration": "< 30 seconds",
+      "rollback_verification": "Verify 5 replicas running, latency stabilizes"
+    },
+
+    "alternative_options": {
+      "option_1": {
+        "description": "Optimize application code to reduce CPU usage",
+        "pros": "No additional cost, sustainable long-term solution",
+        "cons": "Takes days/weeks to implement, doesn't solve immediate problem",
+        "recommendation": "Pursue in parallel, but doesn't address immediate need"
+      },
+      "option_2": {
+        "description": "Increase CPU/memory resources per pod",
+        "pros": "May improve performance without adding replicas",
+        "cons": "Also requires approval (>10% change), may not solve latency issue",
+        "recommendation": "Less effective than horizontal scaling for this workload"
+      },
+      "option_3": {
+        "description": "Accept degraded performance temporarily",
+        "pros": "No cost increase, no approval needed",
+        "cons": "Violates SLA, impacts user experience, risk of cascading failures",
+        "recommendation": "Not acceptable - SLA violation"
+      }
+    },
+
+    "approval_workflow": {
+      "approvers": ["devops-team"],
+      "notification_channels": ["slack://devops-alerts"],
+      "timeout": "1h",
+      "timeout_seconds": 3600,
+      "auto_reject_on_timeout": true,
+      "approval_url": "https://approval-system.example.com/requests/apr-20260210-170000-002"
+    },
+
+    "supporting_evidence": {
+      "metrics_dashboard": "https://grafana.example.com/d/frontend-metrics",
+      "recent_alerts": [
+        "2026-02-10T16:45:00Z - High CPU utilization (90%)",
+        "2026-02-10T16:50:00Z - High latency (280ms > 200ms target)"
+      ],
+      "historical_context": "Last scaled to 5 replicas on 2026-02-08. Load has been increasing steadily.",
+      "user_impact": "~15% of requests experiencing latency > 300ms"
+    }
+  },
+
+  "approval_states": {
+    "pending": {
+      "status": "pending",
+      "description": "Approval request sent, awaiting human response",
+      "next_actions": [
+        "Wait for approval response",
+        "Monitor timeout (1h remaining)",
+        "Continue monitoring system metrics"
+      ]
+    },
+    "approved": {
+      "status": "approved",
+      "description": "Human approver authorized the operation",
+      "next_actions": [
+        "Update blueprint max_replicas to 6",
+        "Execute scaling operation",
+        "Monitor for 5 minutes",
+        "Verify performance improvement",
+        "Log approval and execution"
+      ],
+      "execution_command": "kubectl scale deployment todo-frontend --replicas=6 -n todo-app"
+    },
+    "rejected": {
+      "status": "rejected",
+      "description": "Human approver rejected the operation",
+      "next_actions": [
+        "Do not execute operation",
+        "Log rejection with reason",
+        "Notify decision engine",
+        "Consider alternative options",
+        "Continue monitoring"
+      ],
+      "possible_rejection_reasons": [
+        "Cost concerns - budget constraints",
+        "Prefer code optimization over scaling",
+        "Cluster capacity insufficient",
+        "Timing - prefer to scale during maintenance window"
+      ]
+    },
+    "timeout": {
+      "status": "timeout",
+      "description": "No response within 1 hour, auto-rejected per policy",
+      "next_actions": [
+        "Auto-reject operation",
+        "Log timeout event",
+        "Notify decision engine",
+        "Alert on-call team about unresolved high load"
+      ],
+      "auto_reject_rationale": "Blueprint policy 'auto_reject_on_timeout: true' requires rejection if no response within timeout period"
+    }
+  },
+
+  "notification": {
+    "required": true,
+    "notification_type": "approval_request",
+    "channels": ["slack://devops-alerts"],
+    "message_template": {
+      "title": "🔔 Approval Required: Scale todo-frontend beyond limits",
+      "summary": "Agent requests approval to scale todo-frontend from 5 to 6 replicas (exceeds max_replicas limit)",
+      "details": {
+        "service": "todo-frontend",
+        "operation": "scale_beyond_limits",
+        "current": "5 replicas (at max)",
+        "proposed": "6 replicas",
+        "reason": "Sustained high load (92% utilization), latency 280ms > 200ms target",
+        "cost_impact": "+$20/month (20% increase)",
+        "risk": "Medium",
+        "timeout": "1 hour"
+      },
+      "actions": [
+        "Approve: https://approval-system.example.com/approve/apr-20260210-170000-002",
+        "Reject: https://approval-system.example.com/reject/apr-20260210-170000-002",
+        "View Details: https://approval-system.example.com/requests/apr-20260210-170000-002"
+      ]
+    }
+  },
+
+  "audit_trail": {
+    "governance_check_performed": true,
+    "classification_logged": true,
+    "approval_request_created": true,
+    "notification_sent": true,
+    "awaiting_approval": true,
+    "timeout_scheduled": true
+  },
+
+  "comparison_with_other_tiers": {
+    "why_not_allowed": {
+      "reason": "Target replicas (6) exceeds max_replicas (5)",
+      "would_be_allowed_if": "Target replicas ≤ max_replicas (5)",
+      "example_allowed": "Scaling from 4 to 5 replicas would be allowed"
+    },
+    "why_not_forbidden": {
+      "reason": "Scaling is a safe, reversible operation even beyond limits",
+      "would_be_forbidden_if": "Operation was 'delete_deployment' or 'modify_secrets'",
+      "example_forbidden": "Deleting the deployment would be blocked regardless of justification"
+    }
+  },
+
+  "governance_policy_excerpt": {
+    "from_blueprint": "blueprints/frontend/blueprint.yaml",
+    "section": "governance.agent_authority.requires_approval",
+    "rule": "scale_beyond_limits",
+    "definition": "Scaling beyond max_replicas or below min_replicas requires human approval due to capacity planning and cost implications",
+    "rationale": "Exceeding blueprint limits indicates a capacity planning issue or unexpected load. Human judgment needed to assess whether to increase limits or investigate root cause."
+  },
+
+  "decision_summary": {
+    "operation": "Scale todo-frontend from 5 to 6 replicas (beyond max_replicas limit)",
+    "classification": "Restricted (Tier 2)",
+    "authorization": "Approval required from devops-team",
+    "rationale": "Operation exceeds blueprint max_replicas limit. Requires human approval per governance policy.",
+    "next_step": "Await approval response (timeout: 1h)",
+    "approval_required": true,
+    "estimated_approval_time": "5-30 minutes (human response time)"
+  },
+
+  "key_takeaways": {
+    "for_developers": "Restricted operations require approval but are not forbidden. Design blueprints with appropriate limits to minimize approval requests.",
+    "for_operators": "Review approval requests promptly. Consider whether limits should be adjusted in blueprint or if this is a one-time exception.",
+    "for_security": "Approval workflow provides human oversight for significant changes while allowing agents to propose solutions. Review approval patterns to identify capacity planning issues."
+  }
+}

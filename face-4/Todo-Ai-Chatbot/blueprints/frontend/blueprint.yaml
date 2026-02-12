@@ -1,0 +1,198 @@
+apiVersion: infra.spec-driven.io/v1
+kind: InfrastructureBlueprint
+
+metadata:
+  name: todo-frontend
+  version: 1.0.0
+  owner: devops-team
+  description: Infrastructure blueprint for Todo AI Chatbot frontend (Next.js application)
+  created: "2026-02-10T00:00:00Z"
+
+spec:
+  # Resource requirements for the frontend
+  # Frontend is a Next.js app with moderate resource needs
+  resources:
+    cpu:
+      request: 50m              # Guaranteed 50 millicores (0.05 CPU)
+                                # Rationale: Next.js SSR requires minimal CPU for rendering
+      limit: 200m               # Maximum 200 millicores (0.2 CPU)
+                                # Rationale: Allows burst capacity for traffic spikes
+      target_utilization: 70%   # Target 70% CPU utilization
+                                # Rationale: Leaves 30% headroom for bursts, triggers scaling at 80%
+      optimization_threshold: 10%  # Optimize if usage differs by >10%
+                                # Rationale: Small adjustments (<10%) not worth the disruption
+
+    memory:
+      request: 128Mi            # Guaranteed 128 MiB
+                                # Rationale: Next.js baseline memory footprint
+      limit: 512Mi              # Maximum 512 MiB
+                                # Rationale: Prevents memory leaks from affecting other pods
+      target_utilization: 80%   # Target 80% memory utilization
+                                # Rationale: Memory is more predictable than CPU, can run higher
+      optimization_threshold: 10%  # Optimize if usage differs by >10%
+
+    disk:
+      ephemeral_storage: 1Gi    # 1 GiB ephemeral storage
+                                # Rationale: Next.js build artifacts and cache
+
+  # Performance targets that agents must maintain
+  # These are user-facing SLAs
+  performance:
+    latency_p50: 100ms          # 50th percentile: 100ms
+                                # Rationale: Fast response for typical requests
+    latency_p95: 200ms          # 95th percentile: 200ms (PRIMARY TARGET)
+                                # Rationale: 95% of users get sub-200ms response
+    latency_p99: 500ms          # 99th percentile: 500ms
+                                # Rationale: Even slow requests complete in <500ms
+    throughput_min: 100 req/s   # Minimum 100 requests/second
+                                # Rationale: Expected baseline traffic
+    throughput_target: 200 req/s  # Target 200 requests/second
+                                # Rationale: Comfortable capacity for growth
+    availability: 99.9%         # 99.9% availability (43 minutes downtime/month)
+                                # Rationale: Standard for user-facing services
+    error_rate_max: 1%          # Maximum 1% error rate
+                                # Rationale: Acceptable error budget
+
+  # Scaling policies - agents use these to make autonomous scaling decisions
+  scaling:
+    min_replicas: 1             # Minimum 1 replica
+                                # Rationale: Always have at least one pod running
+    max_replicas: 5             # Maximum 5 replicas
+                                # Rationale: Minikube resource constraints (local dev)
+    target_replicas: 2          # Target 2 replicas under normal load
+                                # Rationale: Provides redundancy and load distribution
+    scale_up_threshold: 80%     # Scale up when utilization > 80%
+                                # Rationale: Proactive scaling before performance degrades
+    scale_down_threshold: 30%   # Scale down when utilization < 30%
+                                # Rationale: Conservative to avoid oscillation
+    scale_up_increment: 1       # Add 1 replica at a time
+                                # Rationale: Gradual scaling, easier to monitor
+    scale_down_increment: 1     # Remove 1 replica at a time
+                                # Rationale: Gradual scaling, safer
+    cooldown_period: 60s        # Wait 60 seconds between scaling operations
+                                # Rationale: Allow system to stabilize, prevent flapping
+    metrics:                    # Metrics to consider for scaling
+      - type: cpu
+        weight: 0.5             # CPU is 50% of scaling decision
+      - type: memory
+        weight: 0.3             # Memory is 30% of scaling decision
+      - type: latency
+        weight: 0.2             # Latency is 20% of scaling decision
+                                # Rationale: CPU most variable, latency is outcome metric
+
+  # Reliability policies - how agents handle failures
+  reliability:
+    max_restart_count: 3        # Maximum 3 restarts before escalation
+                                # Rationale: After 3 failures, likely a deeper issue
+    restart_backoff: exponential  # Exponential backoff between restarts
+                                # Rationale: Prevents rapid restart loops
+    rollback_on_failure: true   # Rollback on repeated failures
+                                # Rationale: Automatic recovery to last known good state
+    rollback_threshold: 2       # Rollback after 2 consecutive failures
+                                # Rationale: One failure might be transient, two is a pattern
+    health_check_timeout: 30s   # 30 second timeout for health checks
+                                # Rationale: Generous timeout for slow starts
+
+    readiness_probe:
+      initial_delay: 10s        # Wait 10s before first readiness check
+                                # Rationale: Next.js needs time to initialize
+      period: 10s               # Check every 10 seconds
+                                # Rationale: Frequent enough to detect issues quickly
+      timeout: 5s               # 5 second timeout per check
+                                # Rationale: Reasonable for HTTP health endpoint
+      failure_threshold: 3      # 3 failures before marking unready
+                                # Rationale: Tolerates transient failures
+
+    liveness_probe:
+      initial_delay: 30s        # Wait 30s before first liveness check
+                                # Rationale: Give app time to fully start
+      period: 30s               # Check every 30 seconds
+                                # Rationale: Less frequent than readiness (liveness is more severe)
+      timeout: 5s               # 5 second timeout per check
+      failure_threshold: 3      # 3 failures before restart
+                                # Rationale: Avoid premature restarts
+
+  # Deployment strategy - how updates are rolled out
+  deployment:
+    strategy: RollingUpdate     # Rolling update strategy
+                                # Rationale: Zero-downtime deployments
+    max_surge: 1                # Maximum 1 extra pod during update
+                                # Rationale: Limits resource usage during rollout
+    max_unavailable: 0          # No pods unavailable during update
+                                # Rationale: Maintains availability during rollout
+    min_ready_seconds: 10       # Pod must be ready for 10s before considered available
+                                # Rationale: Ensures pod is stable before routing traffic
+    revision_history_limit: 5   # Keep last 5 ReplicaSets
+                                # Rationale: Allows rollback to recent versions
+
+# Governance rules - define agent authority and safety boundaries
+governance:
+
+  # Agent authority - three-tier classification
+  agent_authority:
+
+    # Tier 1: Allowed operations (autonomous, no approval needed)
+    allowed_operations:
+      - scale_within_limits           # Scale between min_replicas (1) and max_replicas (5)
+                                      # Rationale: Safe, reversible, within defined bounds
+      - restart_failed_pods           # Restart pods with RestartCount > 0
+                                      # Rationale: Standard recovery action
+      - adjust_resources_within_10_percent  # Adjust CPU/memory by ≤10%
+                                      # Rationale: Small optimizations, low risk
+
+    # Tier 2: Restricted operations (require human approval)
+    requires_approval:
+      - scale_beyond_limits           # Scale beyond max_replicas or below min_replicas
+                                      # Rationale: May indicate capacity planning issue
+      - change_resource_limits_beyond_10_percent  # Adjust CPU/memory by >10%
+                                      # Rationale: Significant change, needs review
+      - modify_deployment_strategy    # Change rolling update parameters
+                                      # Rationale: Affects deployment safety
+      - change_health_checks          # Modify probe configurations
+                                      # Rationale: Affects reliability detection
+
+    # Tier 3: Forbidden operations (blocked, never allowed)
+    forbidden_operations:
+      - delete_deployment             # Delete the deployment
+                                      # Rationale: Causes complete service outage
+      - delete_service                # Delete the service
+                                      # Rationale: Breaks routing to pods
+      - modify_secrets                # Modify secret values
+                                      # Rationale: Security risk, requires manual change
+      - change_network_policies       # Modify network policies
+                                      # Rationale: Security risk, requires manual change
+
+  # Approval workflow - how restricted operations are approved
+  approval_workflow:
+    approvers:
+      - devops-team                   # DevOps team can approve
+                                      # Rationale: Team responsible for infrastructure
+    timeout: 1h                       # 1 hour timeout for approval
+                                      # Rationale: Reasonable time for human response
+    auto_reject_on_timeout: true      # Auto-reject if no response
+                                      # Rationale: Prevents indefinite blocking
+    notification_channels:
+      - slack://devops-alerts         # Notify via Slack
+                                      # Rationale: Real-time notification for urgent requests
+
+  # Audit requirements - comprehensive logging
+  audit:
+    log_all_decisions: true           # Log every agent decision
+                                      # Rationale: Complete audit trail
+    log_all_operations: true          # Log every operation
+                                      # Rationale: Compliance and debugging
+    retention_period: 90d             # Keep logs for 90 days
+                                      # Rationale: Standard retention for compliance
+    log_format: json                  # JSON format
+                                      # Rationale: Structured, machine-readable
+    log_destination: logs/agent-decisions/  # Log directory
+                                      # Rationale: Centralized log storage
+
+# Cost targets (simulated for demo)
+cost:
+  monthly_budget: 100 USD             # $100/month budget
+                                      # Rationale: Simulated cost for demo
+  cost_per_replica: 20 USD            # $20/month per replica
+                                      # Rationale: Simulated cost for demo
+  optimization_priority: balanced     # Balanced optimization
+                                      # Rationale: Balance cost and performance

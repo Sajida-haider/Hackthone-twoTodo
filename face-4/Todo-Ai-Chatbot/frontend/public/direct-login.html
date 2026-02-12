@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Login - Todo App</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Arial, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            background: white;
+            padding: 40px;
+            border-radius: 12px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            width: 100%;
+            max-width: 400px;
+        }
+        h1 { color: #333; margin-bottom: 30px; font-size: 28px; text-align: center; }
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            font-weight: 600;
+        }
+        button:hover { transform: translateY(-2px); }
+        button:disabled { opacity: 0.6; cursor: not-allowed; }
+        #message {
+            margin-top: 20px;
+            padding: 12px;
+            border-radius: 6px;
+            text-align: center;
+            display: none;
+        }
+        .success { background: #d4edda; color: #155724; }
+        .error { background: #f8d7da; color: #721c24; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Todo App Login</h1>
+        <button onclick="doLogin()" id="loginBtn">Login with Your Account</button>
+        <div id="message"></div>
+    </div>
+
+    <script>
+        async function doLogin() {
+            const btn = document.getElementById('loginBtn');
+            const msg = document.getElementById('message');
+
+            btn.disabled = true;
+            btn.textContent = 'Logging in...';
+            msg.style.display = 'block';
+            msg.className = '';
+            msg.textContent = 'Connecting...';
+
+            try {
+                const response = await fetch('http://localhost:8001/api/v1/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        email: 'sajidahaider889@gmail.com',
+                        password: 'Zeemal23@'
+                    })
+                });
+
+                const data = await response.json();
+
+                if (response.ok) {
+                    localStorage.setItem('token', data.access_token);
+                    msg.className = 'success';
+                    msg.textContent = '✓ Login successful! Redirecting...';
+
+                    setTimeout(() => {
+                        window.location.href = 'http://localhost:3000/tasks';
+                    }, 1000);
+                } else {
+                    msg.className = 'error';
+                    msg.textContent = '✗ ' + (data.detail || 'Login failed');
+                    btn.disabled = false;
+                    btn.textContent = 'Try Again';
+                }
+            } catch (error) {
+                msg.className = 'error';
+                msg.textContent = '✗ Connection error: ' + error.message;
+                btn.disabled = false;
+                btn.textContent = 'Try Again';
+            }
+        }
+    </script>
+</body>
+</html>

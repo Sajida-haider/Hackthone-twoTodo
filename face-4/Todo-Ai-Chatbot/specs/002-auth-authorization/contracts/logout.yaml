@@ -1,0 +1,76 @@
+openapi: 3.0.3
+info:
+  title: User Logout API
+  description: Endpoint for user logout and token invalidation
+  version: 1.0.0
+
+paths:
+  /api/auth/logout:
+    post:
+      summary: Logout user and invalidate token
+      description: |
+        Logs out the authenticated user and invalidates their current JWT token.
+        Client should discard the token after receiving this response.
+      operationId: logoutUser
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: Logout successful
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  message:
+                    type: string
+                    example: Logout successful
+        '401':
+          description: Unauthorized - missing or invalid token
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+              examples:
+                missingToken:
+                  value:
+                    detail: Not authenticated
+                invalidToken:
+                  value:
+                    detail: Invalid or expired token
+        '500':
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  detail:
+                    type: string
+                    example: Logout failed
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: JWT token obtained from login endpoint
+
+  schemas:
+    LogoutResponse:
+      type: object
+      properties:
+        message:
+          type: string
+
+    ErrorResponse:
+      type: object
+      properties:
+        detail:
+          type: string

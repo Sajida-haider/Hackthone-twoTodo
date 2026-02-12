@@ -1,0 +1,282 @@
+# Global Governance Policies
+
+# These policies apply across all services in the Todo AI Chatbot deployment.
+# Individual service blueprints can reference or extend these policies.
+
+apiVersion: infra.spec-driven.io/v1
+kind: GlobalGovernancePolicies
+
+metadata:
+  name: todo-app-global-governance
+  version: 1.0.0
+  owner: devops-team
+  description: Global governance policies for all Todo AI Chatbot services
+  created: "2026-02-10T00:00:00Z"
+
+# Global operation classifications
+# These define what operations are universally allowed, restricted, or forbidden
+operation_classifications:
+
+  # Tier 1: Universally allowed operations (all services)
+  # These operations are safe, reversible, and within defined bounds
+  globally_allowed:
+    - scale_within_limits           # Scale between min/max replicas defined in blueprint
+                                    # Rationale: Safe, reversible, respects blueprint boundaries
+    - restart_failed_pods           # Restart pods with RestartCount > 0
+                                    # Rationale: Standard recovery action, low risk
+    - adjust_resources_within_10_percent  # Adjust CPU/memory by ≤10%
+                                    # Rationale: Small optimizations, minimal impact
+    - view_logs                     # View pod logs
+                                    # Rationale: Read-only, no impact on running system
+    - view_metrics                  # View pod metrics
+                                    # Rationale: Read-only, no impact on running system
+    - view_events                   # View Kubernetes events
+                                    # Rationale: Read-only, no impact on running system
+
+  # Tier 2: Universally restricted operations (require approval)
+  # These operations need human judgment due to potential impact
+  globally_restricted:
+    - scale_beyond_limits           # Scale beyond max_replicas or below min_replicas
+                                    # Rationale: May indicate capacity planning issue
+    - change_resource_limits_beyond_10_percent  # Adjust CPU/memory by >10%
+                                    # Rationale: Significant change, needs review
+    - modify_deployment_strategy    # Change rolling update parameters
+                                    # Rationale: Affects deployment safety
+    - change_health_checks          # Modify probe configurations
+                                    # Rationale: Affects reliability detection
+    - modify_configmaps             # Modify ConfigMap values
+                                    # Rationale: May affect application behavior
+    - create_new_resources          # Create new deployments, services, etc.
+                                    # Rationale: Infrastructure changes need approval
+
+  # Tier 3: Universally forbidden operations (never allowed)
+  # These operations are too dangerous for autonomous agents
+  globally_forbidden:
+    - delete_deployment             # Delete any deployment
+                                    # Rationale: Causes service outage
+    - delete_service                # Delete any service
+                                    # Rationale: Breaks routing
+    - delete_persistent_volumes     # Delete any PersistentVolume
+                                    # Rationale: Data loss risk
+    - modify_secrets                # Modify any Secret
+                                    # Rationale: Security risk (passwords, API keys)
+    - change_network_policies       # Modify NetworkPolicies
+                                    # Rationale: Security risk
+    - modify_rbac                   # Modify RBAC permissions
+                                    # Rationale: Security risk
+    - modify_namespaces             # Modify or delete namespaces
+                                    # Rationale: Affects resource isolation
+    - modify_cluster_resources      # Modify cluster-level resources (nodes, etc.)
+                                    # Rationale: Affects entire cluster
+
+# Global approval workflow settings
+# These define how approval requests are handled across all services
+approval_workflow:
+
+  # Default approvers for all services
+  default_approvers:
+    - devops-team                   # DevOps team is default approver
+                                    # Rationale: Team responsible for infrastructure
+
+  # Approval timeout
+  default_timeout: 1h               # 1 hour timeout for approval
+                                    # Rationale: Reasonable time for human response
+
+  # Timeout behavior
+  auto_reject_on_timeout: true      # Auto-reject if no response
+                                    # Rationale: Prevents indefinite blocking
+
+  # Notification channels
+  default_notification_channels:
+    - slack://devops-alerts         # Notify via Slack
+                                    # Rationale: Real-time notification
+
+  # Approval request format
+  approval_request_format:
+    include_blueprint_version: true # Include blueprint version in request
+    include_current_state: true     # Include current system state
+    include_proposed_state: true    # Include proposed state after operation
+    include_rationale: true         # Include agent's rationale
+    include_risk_assessment: true   # Include risk assessment
+    include_rollback_plan: true     # Include rollback plan
+
+# Global audit settings
+# These define how all agent decisions and operations are logged
+audit:
+
+  # Logging requirements
+  log_all_decisions: true           # Log every agent decision
+                                    # Rationale: Complete audit trail
+  log_all_operations: true          # Log every operation
+                                    # Rationale: Compliance and debugging
+  log_all_governance_checks: true   # Log every governance check
+                                    # Rationale: Understand why operations were allowed/blocked
+
+  # Log retention
+  retention_period: 90d             # Keep logs for 90 days
+                                    # Rationale: Standard retention for compliance
+
+  # Log format
+  log_format: json                  # JSON format
+                                    # Rationale: Structured, machine-readable
+
+  # Log destination
+  log_destination: logs/agent-decisions/  # Log directory
+                                    # Rationale: Centralized log storage
+
+  # Log structure requirements
+  required_log_fields:
+    - timestamp                     # ISO 8601 timestamp
+    - agent_id                      # Which agent made the decision
+    - service_name                  # Which service (frontend, backend)
+    - blueprint_version             # Blueprint version used
+    - operation_type                # Type of operation
+    - operation_details             # Details of the operation
+    - governance_classification     # allowed/restricted/forbidden
+    - rationale                     # Agent's reasoning
+    - outcome                       # success/failure/blocked
+    - duration                      # How long operation took
+
+# Global safety mechanisms
+# These prevent runaway automation across all services
+safety:
+
+  # Circuit breaker settings
+  circuit_breaker:
+    enabled: true                   # Enable circuit breaker
+    failure_threshold: 3            # Stop after 3 consecutive failures
+                                    # Rationale: Prevents runaway automation
+    reset_timeout: 1h               # Require manual reset after 1 hour
+                                    # Rationale: Gives time for investigation
+    failure_window: 5m              # Count failures within 5 minute window
+                                    # Rationale: Transient failures don't trigger circuit breaker
+
+  # Cooldown period settings
+  cooldown:
+    enabled: true                   # Enable cooldown periods
+    default_period: 60s             # Default 60 second cooldown
+                                    # Rationale: Allow system to stabilize
+    per_service_override: true      # Allow services to override
+                                    # Rationale: Different services have different needs
+
+  # Rate limiting
+  rate_limiting:
+    enabled: true                   # Enable rate limiting
+    max_operations_per_hour: 10     # Maximum 10 operations per hour per service
+                                    # Rationale: Prevents excessive automation
+    max_operations_per_day: 50      # Maximum 50 operations per day per service
+                                    # Rationale: Reasonable limit for automation
+
+  # Dry-run mode
+  dry_run:
+    enabled: true                   # Enable dry-run mode
+    default_mode: false             # Dry-run is opt-in, not default
+                                    # Rationale: Real operations by default, dry-run for testing
+    require_flag: true              # Require explicit flag to enable dry-run
+                                    # Rationale: Prevent accidental dry-run mode
+
+# Global validation requirements
+# These define how operations are validated before and after execution
+validation:
+
+  # Pre-operation validation
+  pre_operation:
+    validate_blueprint: true        # Validate blueprint before operation
+                                    # Rationale: Ensure blueprint is valid
+    validate_current_state: true    # Validate current state matches expectations
+                                    # Rationale: Detect drift before operating
+    validate_governance: true       # Validate operation against governance rules
+                                    # Rationale: Enforce governance before execution
+    validate_resources: true        # Validate sufficient resources available
+                                    # Rationale: Prevent resource exhaustion
+
+  # Post-operation validation
+  post_operation:
+    validate_outcome: true          # Validate operation achieved intended outcome
+                                    # Rationale: Detect failures
+    validate_targets: true          # Validate blueprint targets are met
+                                    # Rationale: Ensure operation was successful
+    validate_no_side_effects: true  # Validate no unintended side effects
+                                    # Rationale: Detect unexpected changes
+    stabilization_period: 60s       # Wait 60s before validation
+                                    # Rationale: Allow system to stabilize
+
+  # Rollback settings
+  rollback:
+    enabled: true                   # Enable automatic rollback
+    trigger_on_validation_failure: true  # Rollback if validation fails
+                                    # Rationale: Automatic recovery
+    trigger_on_target_violation: true    # Rollback if targets violated
+                                    # Rationale: Maintain SLAs
+    rollback_timeout: 60s           # Rollback within 60 seconds
+                                    # Rationale: Fast recovery
+    verify_rollback: true           # Verify rollback succeeded
+                                    # Rationale: Ensure recovery worked
+
+# Global notification settings
+# These define how agents notify humans about decisions and operations
+notifications:
+
+  # Notification channels
+  channels:
+    - type: slack
+      url: slack://devops-alerts
+      events:
+        - approval_required         # Notify when approval needed
+        - operation_failed          # Notify when operation fails
+        - circuit_breaker_triggered # Notify when circuit breaker triggers
+        - rollback_triggered        # Notify when rollback happens
+
+  # Notification format
+  format:
+    include_service_name: true      # Include which service
+    include_operation_type: true    # Include what operation
+    include_rationale: true         # Include why
+    include_current_state: true     # Include current state
+    include_proposed_state: true    # Include proposed state
+    include_blueprint_reference: true  # Include blueprint section references
+
+  # Notification throttling
+  throttling:
+    enabled: true                   # Enable throttling
+    max_per_hour: 20                # Maximum 20 notifications per hour
+                                    # Rationale: Prevent notification spam
+    group_similar: true             # Group similar notifications
+                                    # Rationale: Reduce noise
+
+# Global compliance requirements
+# These ensure all operations meet compliance standards
+compliance:
+
+  # Required approvals for sensitive operations
+  sensitive_operations:
+    - operation: modify_secrets
+      requires_approval_from:
+        - security-team             # Security team must approve
+      requires_justification: true  # Must provide justification
+      requires_ticket: true         # Must have ticket reference
+
+  # Audit trail requirements
+  audit_trail:
+    immutable: true                 # Audit logs are immutable
+                                    # Rationale: Prevent tampering
+    signed: false                   # Logs are not cryptographically signed (demo)
+                                    # Rationale: Simplified for demo
+    retention_enforced: true        # Enforce retention period
+                                    # Rationale: Compliance requirement
+
+  # Change management
+  change_management:
+    require_change_ticket: false    # Don't require change tickets (demo)
+                                    # Rationale: Simplified for demo
+    require_approval_trail: true    # Require approval trail
+                                    # Rationale: Accountability
+    require_rollback_plan: true     # Require rollback plan
+                                    # Rationale: Risk mitigation
+
+# Notes:
+# - Individual service blueprints can extend these policies
+# - Service-specific policies override global policies where specified
+# - All agents must respect these global policies
+# - Violations of forbidden operations are logged and blocked
+# - This is a living document - update as policies evolve

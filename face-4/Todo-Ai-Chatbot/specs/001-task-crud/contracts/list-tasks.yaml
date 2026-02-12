@@ -1,0 +1,123 @@
+openapi: 3.0.0
+info:
+  title: List Tasks API
+  version: 1.0.0
+  description: Retrieve all tasks for the authenticated user
+
+paths:
+  /api/tasks:
+    get:
+      summary: List all tasks for authenticated user
+      description: |
+        Returns all tasks belonging to the authenticated user. Tasks are ordered
+        by creation date (newest first). User ID is extracted from JWT token.
+      operationId: listTasks
+      tags:
+        - Tasks
+      security:
+        - BearerAuth: []
+      responses:
+        '200':
+          description: List of tasks retrieved successfully
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+              examples:
+                withTasks:
+                  value:
+                    - id: "550e8400-e29b-41d4-a716-446655440000"
+                      user_id: "123e4567-e89b-12d3-a456-426614174000"
+                      title: "Buy groceries"
+                      description: "Milk, eggs, bread"
+                      status: "pending"
+                      due_date: "2026-02-15T10:00:00Z"
+                      created_at: "2026-02-08T12:00:00Z"
+                      updated_at: "2026-02-08T12:00:00Z"
+                    - id: "660e8400-e29b-41d4-a716-446655440001"
+                      user_id: "123e4567-e89b-12d3-a456-426614174000"
+                      title: "Call dentist"
+                      description: null
+                      status: "completed"
+                      due_date: null
+                      created_at: "2026-02-07T09:00:00Z"
+                      updated_at: "2026-02-08T11:00:00Z"
+                emptyList:
+                  value: []
+        '401':
+          description: Authentication error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Invalid or expired token"
+                code: "INVALID_TOKEN"
+        '500':
+          description: Server error
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+              example:
+                detail: "Internal server error"
+                code: "SERVER_ERROR"
+
+components:
+  securitySchemes:
+    BearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  schemas:
+    Task:
+      type: object
+      required:
+        - id
+        - user_id
+        - title
+        - status
+        - created_at
+        - updated_at
+      properties:
+        id:
+          type: string
+          format: uuid
+        user_id:
+          type: string
+          format: uuid
+        title:
+          type: string
+          minLength: 1
+          maxLength: 200
+        description:
+          type: string
+          maxLength: 2000
+          nullable: true
+        status:
+          type: string
+          enum: [pending, completed]
+        due_date:
+          type: string
+          format: date-time
+          nullable: true
+        created_at:
+          type: string
+          format: date-time
+        updated_at:
+          type: string
+          format: date-time
+
+    Error:
+      type: object
+      required:
+        - detail
+        - code
+      properties:
+        detail:
+          type: string
+        code:
+          type: string
