@@ -33,7 +33,7 @@ app.add_middleware(LoggingMiddleware)
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # Frontend origin
+    allow_origins=["http://localhost:3000", "http://localhost:3001", "http://localhost:3002", "http://localhost:3003"],  # Frontend origins
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -52,6 +52,13 @@ async def root():
 async def health_check():
     """Health check endpoint."""
     return {"status": "healthy"}
+
+# Create database tables on startup
+@app.on_event("startup")
+async def on_startup():
+    """Create database tables on application startup."""
+    from app.database import create_db_and_tables
+    create_db_and_tables()
 
 # Include API routes
 from app.api.v1 import tasks, auth
