@@ -1,0 +1,6 @@
+{
+  "version": 2,
+  "buildCommand": "cd face-2/todo-app/frontend && npm install && npm run build",
+  "outputDirectory": "face-2/todo-app/frontend/.next",
+  "installCommand": "cd face-2/todo-app/frontend && npm install"
+}
