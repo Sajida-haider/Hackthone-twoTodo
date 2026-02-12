@@ -80,7 +80,7 @@ async function login(credentials: LoginRequest): Promise<LoginResponse> {
  * Register a new user.
  */
 async function register(credentials: RegisterRequest): Promise<RegisterResponse> {
-  const response = await fetch(`${API_URL}/api/auth/register`, {
+  const response = await fetch(`${API_URL}/api/v1/auth/register`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -104,7 +104,7 @@ async function logout(): Promise<void> {
   if (!token) return;
 
   try {
-    await fetch(`${API_URL}/api/auth/logout`, {
+    await fetch(`${API_URL}/api/v1/auth/logout`, {
       method: 'POST',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -120,7 +120,7 @@ async function logout(): Promise<void> {
  * Verify email with token from email link.
  */
 async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
-  const response = await fetch(`${API_URL}/api/auth/verify-email?token=${token}`, {
+  const response = await fetch(`${API_URL}/api/v1/auth/verify-email?token=${token}`, {
     method: 'GET',
     headers: {
       'Content-Type': 'application/json',
@@ -139,7 +139,7 @@ async function verifyEmail(token: string): Promise<VerifyEmailResponse> {
  * Resend verification email.
  */
 async function resendVerification(data: ResendVerificationRequest): Promise<ResendVerificationResponse> {
-  const response = await fetch(`${API_URL}/api/auth/resend-verification`, {
+  const response = await fetch(`${API_URL}/api/v1/auth/resend-verification`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
