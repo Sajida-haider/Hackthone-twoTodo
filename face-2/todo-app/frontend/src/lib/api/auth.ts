@@ -4,7 +4,7 @@
 
 import { getToken } from '@/lib/auth/better-auth';
 
-const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000';
+const API_URL = process.env.NEXT_PUBLIC_API_URL || 'https://sajida85-face-2todo.hf.space';
 
 interface LoginRequest {
   email: string;
