@@ -1,0 +1,9 @@
+INFO:     Will watch for changes in these directories: ['C:\\Users\\KARAKORUM TRADERS\\Desktop\\face-3\\Todo-Ai-Chatbot\\backend']
+INFO:     Uvicorn running on http://0.0.0.0:8001 (Press CTRL+C to quit)
+INFO:     Started reloader process [13868] using WatchFiles
+C:\Users\KARAKORUM TRADERS\AppData\Local\Programs\Python\Python311\Lib\site-packages\pydantic\_internal\_config.py:318: UserWarning: Valid config keys have changed in V2:
+* 'schema_extra' has been renamed to 'json_schema_extra'
+  warnings.warn(message, UserWarning)
+INFO:     Started server process [13948]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
