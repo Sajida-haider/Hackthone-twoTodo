@@ -27,7 +27,7 @@ export function useTasks(): UseTasksReturn {
     try {
       setIsLoading(true);
       setError(null);
-      const data = await taskApi.list();
+      const data = await taskApi.getTasks();
       setTasks(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load tasks';
@@ -41,7 +41,7 @@ export function useTasks(): UseTasksReturn {
   const createTask = useCallback(async (data: TaskCreate): Promise<Task> => {
     try {
       setError(null);
-      const newTask = await taskApi.create(data);
+      const newTask = await taskApi.createTask(data);
       setTasks((prev) => [newTask, ...prev]);
       return newTask;
     } catch (err) {
@@ -54,7 +54,7 @@ export function useTasks(): UseTasksReturn {
   const updateTask = useCallback(async (id: string, data: TaskUpdate): Promise<Task> => {
     try {
       setError(null);
-      const updatedTask = await taskApi.update(id, data);
+      const updatedTask = await taskApi.updateTask(id, data);
       setTasks((prev) =>
         prev.map((task) => (task.id === id ? updatedTask : task))
       );
@@ -69,7 +69,7 @@ export function useTasks(): UseTasksReturn {
   const deleteTask = useCallback(async (id: string): Promise<void> => {
     try {
       setError(null);
-      await taskApi.delete(id);
+      await taskApi.deleteTask(id);
       setTasks((prev) => prev.filter((task) => task.id !== id));
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to delete task';

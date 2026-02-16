@@ -88,10 +88,10 @@ export function useChat(): UseChatReturn {
 
     // Create optimistic user message
     const userMessage: Message = {
-      id: Date.now(), // Temporary ID
-      role: MessageRole.USER,
+      id: Date.now().toString(), // Temporary ID
+      role: 'user',
       content: messageText,
-      created_at: new Date().toISOString(),
+      timestamp: new Date().toISOString(),
     };
 
     // Add user message to UI immediately (optimistic update)
@@ -107,10 +107,10 @@ export function useChat(): UseChatReturn {
 
       // Create assistant message from response
       const assistantMessage: Message = {
-        id: Date.now() + 1, // Temporary ID
-        role: MessageRole.ASSISTANT,
+        id: (Date.now() + 1).toString(), // Temporary ID
+        role: 'assistant',
         content: response.response,
-        created_at: new Date().toISOString(),
+        timestamp: new Date().toISOString(),
         tool_calls: response.tool_calls,
       };
 

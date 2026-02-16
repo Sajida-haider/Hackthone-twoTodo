@@ -8,16 +8,24 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # Get database URL from environment
-DATABASE_URL = os.getenv("DATABASE_URL", "postgresql://localhost/todo_db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./todo.db")
 
-# Create engine with connection pooling
-engine = create_engine(
-    DATABASE_URL,
-    echo=True,  # Log SQL queries in development
-    pool_pre_ping=True,  # Verify connections before using
-    pool_size=5,
-    max_overflow=10
-)
+# Create engine - SQLite doesn't support connection pooling
+if DATABASE_URL.startswith("sqlite"):
+    engine = create_engine(
+        DATABASE_URL,
+        echo=False,  # Disable SQL logging in production
+        connect_args={"check_same_thread": False}  # Required for SQLite
+    )
+else:
+    # PostgreSQL/MySQL with connection pooling
+    engine = create_engine(
+        DATABASE_URL,
+        echo=True,
+        pool_pre_ping=True,
+        pool_size=5,
+        max_overflow=10
+    )
 
 def create_db_and_tables():
     """Create all database tables."""

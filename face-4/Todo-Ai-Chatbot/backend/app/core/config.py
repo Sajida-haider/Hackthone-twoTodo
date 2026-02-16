@@ -61,9 +61,13 @@ def check_environment_on_startup():
     is_valid, errors = validate_environment()
 
     if not is_valid:
-        print("\n[ERROR] Application cannot start due to missing required environment variables.")
-        print("Please check your .env file and ensure all required variables are set.")
-        sys.exit(1)
+        print("\n[WARNING] Some required environment variables are missing.")
+        print("The application will start but some features may not work correctly.")
+        print("Please set the following environment variables:")
+        for error in errors:
+            print(f"  {error}")
+        # Don't exit in production - let the app start with warnings
+        # sys.exit(1)
 
 if __name__ == "__main__":
     check_environment_on_startup()

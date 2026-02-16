@@ -22,7 +22,11 @@ class TodoAgent:
         """Initialize TodoAgent with OpenAI client."""
         api_key = os.getenv("OPENAI_API_KEY")
         if not api_key:
-            raise ValueError("OPENAI_API_KEY environment variable not set")
+            # Don't raise error - allow graceful degradation
+            self.client = None
+            self.model = None
+            print("[WARNING] OPENAI_API_KEY not set - chatbot will return error messages")
+            return
 
         self.client = OpenAI(api_key=api_key)
         self.model = "gpt-4"
@@ -159,6 +163,13 @@ When listing tasks, format them nicely for the user."""
         Returns:
             Dict with response text and tool_calls
         """
+        # Check if OpenAI client is available
+        if not self.client:
+            return {
+                "response": "Sorry, the AI chatbot is currently unavailable. The OpenAI API key is not configured. Please contact the administrator to set up the OPENAI_API_KEY environment variable.",
+                "tool_calls": []
+            }
+
         try:
             # Build messages for OpenAI
             messages = [{"role": "system", "content": self.system_prompt}]
