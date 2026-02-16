@@ -1,0 +1,7 @@
+{
+  "buildCommand": "cd face-4/Todo-Ai-Chatbot/frontend && npm run build",
+  "devCommand": "cd face-4/Todo-Ai-Chatbot/frontend && npm run dev",
+  "installCommand": "cd face-4/Todo-Ai-Chatbot/frontend && npm install",
+  "framework": null,
+  "outputDirectory": "face-4/Todo-Ai-Chatbot/frontend/.next"
+}
